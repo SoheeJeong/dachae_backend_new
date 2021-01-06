@@ -15,9 +15,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
+import common.urls
+import matching.urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('dachae/common/',include('common.urls',namespace='common')),
-    path('dachae/matching/',include('matching.urls',namespace='macthing'))
+    path('dachae/common/',include(common.urls,namespace='common')),
+    path('dachae/matching/',include(matching.urls,namespace='macthing'))
 ]
