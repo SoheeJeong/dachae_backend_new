@@ -9,8 +9,14 @@ https://docs.djangoproject.com/en/2.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.0/ref/settings/
 """
-
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+DB_USER = os.getenv("DB_USER")
+DB_HOST = os.getenv("DB_HOST")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_PORT = os.getenv("DB_PORT")
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -78,11 +84,11 @@ WSGI_APPLICATION = 'dachae.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'crawling_data', #database name
-        'USER': 'root',
-        'PASSWORD': '102938gogo', #접속 비밀번호
-        'HOST':'localhost',
-        'PORT': '3306'
+        'NAME': 'dachae_db', #database name
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD, #접속 비밀번호
+        'HOST':DB_HOST,
+        'PORT': DB_PORT,
     }
 }
 
