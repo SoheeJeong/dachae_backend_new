@@ -37,12 +37,14 @@ ALLOWED_HOSTS = ['127.0.0.1']
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'dachae',
     'common',
     'matching',
 ]
@@ -84,9 +86,9 @@ WSGI_APPLICATION = 'dachae.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'dachae_db', #database name
+        'NAME': 'dachae_db', 
         'USER': DB_USER,
-        'PASSWORD': DB_PASSWORD, #접속 비밀번호
+        'PASSWORD': DB_PASSWORD, 
         'HOST':DB_HOST,
         'PORT': DB_PORT,
     }
