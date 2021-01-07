@@ -46,8 +46,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'drf_yasg', #swagger
     'dachae',
-    'common',
-    'matching',
+    'dachae_common',
+    'dachae_matching',
 ]
 
 MIDDLEWARE = [

@@ -7,8 +7,8 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-import common.urls
-import matching.urls
+import dachae_common.urls
+import dachae_matching.urls
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -26,10 +26,9 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('swagger/',schema_view.with_ui(cache_timeout=0),name='swagger'),
-    path('dachae/common/',include(common.urls,namespace='common')),
-    path('dachae/matching/',include(matching.urls,namespace='macthing'))
+    path('dachae/common/',include(dachae_common.urls,namespace='common')),
+    path('dachae/matching/',include(dachae_matching.urls,namespace='macthing'))
 ]
-
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL,
