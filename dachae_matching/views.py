@@ -54,8 +54,21 @@ def get_picture_detail_info(request):
 def get_label_list(request):
     '''
     느낌라벨 리스트 가져오기
+    param example) start=0&end=2 이면 index 0,1,2 라벨 로드 (1,2,3 번째 라벨 로드)
     '''
-    data = {"data":"temp"}
+    start = request.GET.get("start",0)  
+    end = request.GET.get("end",None)  
+
+    label_list = TbLabelInfo.objects.values("label_nm","label_id")
+    end = len(label_list) if not end else min(len(label_list),int(end)+1)
+
+    data_list = label_list[int(start):end]
+    data = {
+            "result": "succ",
+            "msg": "메세지",
+            "data" : data_list,
+            }
+
     return Response(data)
 
 @csrf_exempt
