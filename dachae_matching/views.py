@@ -30,9 +30,24 @@ def get_picture_filtered_result(request):
 @api_view(["GET"])
 def get_picture_detail_info(request):
     '''
-    명화 상세정보 가져오기
+    명화 1개의 상세정보 가져오기 (이미지 클릭 시 명화 상세정보 페이지로 이동)
     '''
-    data = {"data":"temp"}
+    img_id = request.GET.get("img_id",None)  
+    if not img_id:
+        raise DataBaseException
+
+    image_info = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price")
+    image_data = image_info[0] #unique item
+    company_nm = TbCompanyInfo.objects.filter(company_id=image_data["company_id"]).values("company_nm")
+    
+    del image_data["company_id"]
+    image_data.update(company_nm[0])
+
+    data = {
+            "result": "succ",
+            "msg": "메세지",
+            "data": image_data,
+            }
     return Response(data)
 
 @api_view(["GET"])
