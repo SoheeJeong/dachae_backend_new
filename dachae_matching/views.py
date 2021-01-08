@@ -76,7 +76,7 @@ def get_label_list(request):
 @api_view(["POST"])
 def set_user_image_upload(request):
     '''
-    사용자 로컬이미지 업로드
+    사용자 로컬이미지 업로드 -> set into storage
     '''
     servertime = '101104' #TODO : servertime 가져오기
     user_id = request.POST.get("user_id", None) 
@@ -106,20 +106,26 @@ def set_user_image_upload(request):
             }
     return Response(data)
 
-@api_view(["GET"])
+@csrf_exempt
+@api_view(["POST"])
 def exec_recommend(request):
     '''
     매칭 수행
     '''
-    upload_id = request.GET.get("upload_id",None)  
-    # TODO: get label list param
+    body = json.loads(request.body.decode("utf-8"))
+    upload_id = None if not body["upload_id"] else body["upload_id"]
     if not upload_id:
         raise DataBaseException #TODO: no parameter exception 으로 바꾸기
+
+    label_list = body["label_list"]
+    chosen_label = []
+    for label in label_list:
+        chosen_label.append(label["label_nm"])    
 
     room_img_info = TbUploadInfo.objects.values("room_img") #user upload image path (backend)
     room_img_path = room_img_info[0]["room_img"]
 
-    #temp path for debug
+    #temp path for debug - TODO: MUST delete below line after debug
     room_img_path = os.path.join(settings.MEDIA_ROOT,"sohee/101104index.jpeg")
 
     #load artwork data
@@ -129,15 +135,25 @@ def exec_recommend(request):
     getimgcolor = GetImageColor(room_img_path)
     clt =  getimgcolor.get_meanshift() #room color clt with meanshift
     clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path
+    #TODO: set chosen label data and clustering result data in Tb_upload_info
+
     analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
+    #TODO: add filtering by label function here (filter criteria: label_list)
 
     data = {
-        'clustering_result':room_img_path[:-4]+'_cluster_result.png',
-        'clt_path':clt_path,
-        'recommend_result':{
-            'analog':analog['img_path'],
-            'comp':comp['img_path'],
-            'mono':mono['img_path']   
+        'result':'succ',
+        'msg':'message',
+        'matching':1, #matching default 0
+        'recommend':{
+            'upload_id':upload_id,
+            'room_img':room_img_path,
+            'clustering_result':clt_path,
+            'chosen_label':chosen_label,
+            'recommend_images':{
+                'analog':analog['img_path'],
+                'comp':comp['img_path'],
+                'mono':mono['img_path']   
+            }
         }
     }
     
