@@ -89,9 +89,9 @@ def set_user_image_upload(request):
         raise DataBaseException #TODO : 파일을 1장만 업로드해주세요 exception 추가 후 바꾸기
 
     filename = upload_files[0].name
-    #파일 확장자 검사
-    if filename[-3:] not in ['jpg','png']: #TODO : 허용되는 확장자 지정
-        raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 으로 바꾸기
+    #파일 확장자 검사 #TODO: user delimiter
+    #if filename[-3:] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
+    #    raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 으로 바꾸기
 
     filename = servertime + upload_files[0].name #저장할 파일명 지정
     save_path = os.path.join(upload_file_path, filename)
@@ -106,8 +106,7 @@ def set_user_image_upload(request):
             }
     return Response(data)
 
-@csrf_exempt
-@api_view(["POST"])
+@api_view(["GET"])
 def exec_recommend(request):
     '''
     매칭 수행
@@ -116,27 +115,32 @@ def exec_recommend(request):
     if not upload_id:
         raise DataBaseException #TODO: no parameter exception 으로 바꾸기
 
-    room_img_path = TbUploadInfo.objects.values("room_img")
-    print(room_img_path[0])
-    '''
-    clt =  GetImageColor(room_img_path).get_meanshift() #room color clt with meanshift
+    room_img_info = TbUploadInfo.objects.values("room_img") #user upload image path (backend)
+    room_img_path = room_img_info[0]["room_img"]
 
+    #temp path for debug
+    room_img_path = os.path.join(settings.MEDIA_ROOT,"sohee/101104index.jpeg")
+
+    #load artwork data
+    pic_data = TbArkworkInfo.objects.values('image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
+
+    #exec recommend
+    getimgcolor = GetImageColor(room_img_path)
+    clt =  getimgcolor.get_meanshift() #room color clt with meanshift
+    clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path
     analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
 
     data = {
-        'img_info':{
-            'title': room_img_path[20:],
-            'imgurl': room_img_path, #settings.MEDIA_URL+image[2],
-        },
         'clustering_result':room_img_path[:-4]+'_cluster_result.png',
+        'clt_path':clt_path,
         'recommend_result':{
-            'analog':analog['imageurl'],
-            'comp':comp['imageurl'],
-            'mono':mono['imageurl']   
+            'analog':analog['img_path'],
+            'comp':comp['img_path'],
+            'mono':mono['img_path']   
         }
     }
-    '''
-    return Response({"data": room_img_path[0]})
+    
+    return Response(data)
 
 @api_view(["GET"])
 def get_recommend_result(request):

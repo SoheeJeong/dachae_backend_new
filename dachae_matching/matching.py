@@ -15,10 +15,8 @@ from django.conf import settings
 from django.db import DatabaseError, connection
 
 class GetImageColor():
-    def __init__(self,imgurl,imgroot): 
+    def __init__(self,imgurl): 
         self.imgurl = imgurl
-        self.imgroot = imgroot
-        print(self.imgurl)
 
     #이미지 픽셀 섞기
     def shuffle_image(self, image):
@@ -30,7 +28,7 @@ class GetImageColor():
     #이미지 로드, 전처리
     def preprocess_image(self):
         #load image
-        image = cv2.imread(os.path.join("."+self.imgurl))
+        image = cv2.imread(os.path.join(self.imgurl))
         ## 밝기조절
         val=10
         array=np.full(image.shape,(val,val,val),dtype=np.uint8)
@@ -92,22 +90,23 @@ class GetImageColor():
         (hist, _) = np.histogram(clt.labels_, bins=num_labels)
         hist = hist.astype("float")
         hist /= hist.sum()
-        self.plot_colors(hist,clt.cluster_centers_)
+        centroids = clt.cluster_centers_
 
-    def plot_colors(self, hist, centroids):
+        #plot colors
         bar = np.zeros((50, 300, 3), dtype="uint8")
         start_x = 0
         for (percent, color) in zip(hist, centroids):
             end_x = start_x + (percent * 300)
             cv2.rectangle(bar, (int(start_x), 0), (int(end_x), 50),color.astype("uint8").tolist(), -1)
             start_x = end_x
-        self.save_results(bar)
 
-    def save_results(self,bar):
+        #save results
         plt.figure()
         plt.axis('on')
         plt.imshow(bar)
-        plt.savefig(self.imgroot[:-4]+'_cluster_result.png')
+        save_path = self.imgurl[:-4]+'_cluster_result.png' #TODO: use delimiter
+        plt.savefig(save_path)
+        return save_path
 
 class Recommendation():
     def __init__(self,clt,data):
@@ -129,8 +128,8 @@ class Recommendation():
 
     def recommend_pic(self): 
         #convert tuple into dataframe
-        df = pd.DataFrame(self.data, columns =['id','artist','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','imageurl'])
-
+        df = pd.DataFrame(self.data, columns =['image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path'])
+        print('df:',df)
         analog_title_temp, analog_img_temp = [],[]
         compl_title_temp, compl_img_temp = [],[]
         mono_title_temp, mono_img_temp = [],[]
@@ -156,34 +155,34 @@ class Recommendation():
 
                 # 중복을 방지하기 위해 dictionary 로 바꿨다가 다시 list로 변환, append
                 #유사색
-                if len(df[roomcolor_analog]['imageurl']):
+                if len(df[roomcolor_analog]['img_path']):
                     analog_title_temp = self.list_append_only_values(analog_title_temp,list( dict.fromkeys(df[roomcolor_analog]['title'].values,)))
-                    analog_img_temp = self.list_append_only_values(analog_img_temp,list( dict.fromkeys(df[roomcolor_analog]['imageurl'].values,)))
+                    analog_img_temp = self.list_append_only_values(analog_img_temp,list( dict.fromkeys(df[roomcolor_analog]['img_path'].values,)))
                 #보색
-                if len(df[roomcolor_compl]['imageurl']):
+                if len(df[roomcolor_compl]['img_path']):
                     compl_title_temp = self.list_append_only_values(compl_title_temp,list( dict.fromkeys(df[roomcolor_compl]['title'].values,)))
-                    compl_img_temp = self.list_append_only_values(compl_img_temp,list( dict.fromkeys(df[roomcolor_compl]['imageurl'].values,)))
+                    compl_img_temp = self.list_append_only_values(compl_img_temp,list( dict.fromkeys(df[roomcolor_compl]['img_path'].values,)))
                 #단색
-                if len(df[roomcolor_mono]['imageurl']):
+                if len(df[roomcolor_mono]['img_path']):
                     mono_title_temp = self.list_append_only_values(mono_title_temp,list( dict.fromkeys(df[roomcolor_mono]['title'].values,)))
-                    mono_img_temp = self.list_append_only_values(mono_img_temp,list( dict.fromkeys(df[roomcolor_mono]['imageurl'].values,)))
+                    mono_img_temp = self.list_append_only_values(mono_img_temp,list( dict.fromkeys(df[roomcolor_mono]['img_path'].values,)))
                 
         df_analog, df_compl, df_mono = {},{},{}
         
         #유사색-추천받은 명화      
         df_analog={
             'title': analog_title_temp,
-            'imageurl': analog_img_temp
+            'img_path': analog_img_temp
             }  
         #보색-추천받은 명화
         df_compl={
             'title': compl_title_temp,
-            'imageurl': compl_img_temp
+            'img_path': compl_img_temp
             }
         #단색-추천받은 명화
         df_mono={
             'title': mono_title_temp,
-            'imageurl': mono_img_temp
+            'img_path': mono_img_temp
             }
                 
         return df_analog,df_compl,df_mono   
