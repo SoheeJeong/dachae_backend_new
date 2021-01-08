@@ -1,6 +1,12 @@
+#TODO TbArtworkInfo 를 샘플사진리스트 테이블로 바꾸기
+
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+
+from dachae.models import TbArkworkInfo,TbUserInfo,TbUserLog 
+from dachae.exceptions import DataBaseException
 
 @csrf_exempt
 @api_view(["POST"])
@@ -33,6 +39,18 @@ def set_signout(request):
 def get_best_image_list(request):
     '''
     메인화면에서 샘플사진 리스트 로드
+    param example) start=0&end=2 이면 index 0,1,2 사진 로드 (1,2,3 번째 사진 로드)
     '''
-    data = {"data":"temp"}
+    start = request.GET.get("start",0)  
+    end = request.GET.get("end",None)  
+
+    best_image_list = TbArkworkInfo.objects.values("img_path","image_id")
+    end = len(best_image_list) if not end else int(end)
+
+    data_list = best_image_list[int(start):end+1]
+    data = {
+            "result": "succ",
+            "msg": "메세지",
+            "data" : data_list,
+            }
     return Response(data)
