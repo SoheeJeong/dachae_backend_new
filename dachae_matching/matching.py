@@ -14,18 +14,6 @@ from django.contrib.sites import requests
 from django.conf import settings
 from django.db import DatabaseError, connection
 
-#get query result
-def get_sql_query_result(sql,param=None):
-    with connection.cursor() as cursor:
-        #sql문 실행
-        if not param:
-            cursor.execute(sql) #no parameter
-        else:
-            cursor.execute(sql,(param))
-        #sql 실행결과 반환
-        result = cursor.fetchall()
-    return result
-
 class GetImageColor():
     def __init__(self,imgurl,imgroot): 
         self.imgurl = imgurl
