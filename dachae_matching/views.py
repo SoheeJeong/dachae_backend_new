@@ -16,6 +16,7 @@ import datetime
 import random
 import base64
 
+from .matching import GetImageColor, Recommendation
 from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo
 from dachae.exceptions import DataBaseException
 
@@ -87,11 +88,16 @@ def set_user_image_upload(request):
     if len(upload_files)>1:
         raise DataBaseException #TODO : 파일을 1장만 업로드해주세요 exception 추가 후 바꾸기
 
-    filename = servertime + upload_files[0].name
+    filename = upload_files[0].name
+    #파일 확장자 검사
+    if filename[-3:] not in ['jpg','png']: #TODO : 허용되는 확장자 지정
+        raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 으로 바꾸기
+
+    filename = servertime + upload_files[0].name #저장할 파일명 지정
     save_path = os.path.join(upload_file_path, filename)
     default_storage.save(save_path, upload_files[0])
     file_addr = settings.MEDIA_ROOT+save_path
-        
+    
     #TODO : TB_UPLOAD_INFO 에 정보 저장
     data = {
             "result": "succ",
@@ -106,8 +112,31 @@ def exec_recommend(request):
     '''
     매칭 수행
     '''
-    data = {"data":"temp"}
-    return Response(data)
+    upload_id = request.GET.get("upload_id",None)  
+    if not upload_id:
+        raise DataBaseException #TODO: no parameter exception 으로 바꾸기
+
+    room_img_path = TbUploadInfo.objects.values("room_img")
+    print(room_img_path[0])
+    '''
+    clt =  GetImageColor(room_img_path).get_meanshift() #room color clt with meanshift
+
+    analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
+
+    data = {
+        'img_info':{
+            'title': room_img_path[20:],
+            'imgurl': room_img_path, #settings.MEDIA_URL+image[2],
+        },
+        'clustering_result':room_img_path[:-4]+'_cluster_result.png',
+        'recommend_result':{
+            'analog':analog['imageurl'],
+            'comp':comp['imageurl'],
+            'mono':mono['imageurl']   
+        }
+    }
+    '''
+    return Response({"data": room_img_path[0]})
 
 @api_view(["GET"])
 def get_recommend_result(request):
