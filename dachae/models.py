@@ -2,14 +2,14 @@
 # You'll have to do the following manually to clean this up:
 #   * Rearrange models' order
 #   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey has `on_delete` set to the desired behavior.
+#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 
 
 class TbArkworkInfo(models.Model):
-    image_id = models.PositiveIntegerField(primary_key=True)
+    image_id = models.AutoField(primary_key=True)
     img_path = models.CharField(max_length=100)
     title = models.CharField(max_length=50, blank=True, null=True)
     author = models.CharField(max_length=50, blank=True, null=True)
@@ -26,11 +26,11 @@ class TbArkworkInfo(models.Model):
     h3 = models.PositiveIntegerField(blank=True, null=True)
     s3 = models.PositiveIntegerField(blank=True, null=True)
     v3 = models.PositiveIntegerField(blank=True, null=True)
-    label1_id = models.CharField(max_length=40, blank=True, null=True)
-    label2_id = models.CharField(max_length=40, blank=True, null=True)
-    label3_id = models.CharField(max_length=40, blank=True, null=True)
-    label4_id = models.CharField(max_length=40, blank=True, null=True)
-    label5_id = models.CharField(max_length=40, blank=True, null=True)
+    label1_id = models.IntegerField(blank=True, null=True)
+    label2_id = models.IntegerField(blank=True, null=True)
+    label3_id = models.IntegerField(blank=True, null=True)
+    label4_id = models.IntegerField(blank=True, null=True)
+    label5_id = models.IntegerField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -38,7 +38,7 @@ class TbArkworkInfo(models.Model):
 
 
 class TbCompanyInfo(models.Model):
-    company_id = models.PositiveIntegerField(primary_key=True)
+    company_id = models.AutoField(primary_key=True)
     company_nm = models.CharField(max_length=45)
     start_date = models.DateTimeField(blank=True, null=True)
     termination_date = models.DateTimeField(blank=True, null=True)
@@ -51,7 +51,7 @@ class TbCompanyInfo(models.Model):
 
 
 class TbLabelInfo(models.Model):
-    label_id = models.PositiveIntegerField(primary_key=True)
+    label_id = models.AutoField(primary_key=True)
     label_nm = models.CharField(max_length=50)
     label_freq = models.PositiveIntegerField(blank=True, null=True)
 
@@ -61,7 +61,7 @@ class TbLabelInfo(models.Model):
 
 
 class TbPurchaseInfo(models.Model):
-    purchase_id = models.IntegerField(primary_key=True)
+    purchase_id = models.AutoField(primary_key=True)
     user_id = models.CharField(max_length=40, blank=True, null=True)
     server_time = models.DateTimeField(blank=True, null=True)
     company_id = models.IntegerField(blank=True, null=True)
@@ -72,17 +72,27 @@ class TbPurchaseInfo(models.Model):
         db_table = 'TB_PURCHASE_INFO'
 
 
+class TbSampleList(models.Model):
+    sample_id = models.AutoField(primary_key=True)
+    sample_path = models.CharField(max_length=50)
+    artwork = models.ForeignKey(TbArkworkInfo, models.DO_NOTHING, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'TB_SAMPLE_LIST'
+
+
 class TbUploadInfo(models.Model):
-    upload_id = models.IntegerField(primary_key=True)
+    upload_id = models.AutoField(primary_key=True)
     user_id = models.CharField(max_length=40, blank=True, null=True)
     server_time = models.DateTimeField(blank=True, null=True)
     room_img = models.CharField(max_length=1000, blank=True, null=True)
     clustering_img = models.CharField(max_length=1000, blank=True, null=True)
-    label1_id = models.CharField(max_length=45, blank=True, null=True)
-    label2_id = models.CharField(max_length=45, blank=True, null=True)
-    label3_id = models.CharField(max_length=45, blank=True, null=True)
-    label4_id = models.CharField(max_length=45, blank=True, null=True)
-    label5_id = models.CharField(max_length=45, blank=True, null=True)
+    label1_id = models.IntegerField()
+    label2_id = models.IntegerField()
+    label3_id = models.IntegerField()
+    label4_id = models.IntegerField(blank=True, null=True)
+    label5_id = models.IntegerField(blank=True, null=True)
     img_id = models.CharField(max_length=45, blank=True, null=True)
     like = models.CharField(max_length=45, blank=True, null=True)
     purchase_id = models.IntegerField(blank=True, null=True)
@@ -124,9 +134,10 @@ class TbUserLog(models.Model):
 
 
 class TbWishlistInfo(models.Model):
-    wish_id = models.IntegerField(primary_key=True)
+    wish_id = models.AutoField(primary_key=True)
     user_id = models.CharField(max_length=40, blank=True, null=True)
     image_id = models.IntegerField(blank=True, null=True)
+    servertime = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -134,7 +145,7 @@ class TbWishlistInfo(models.Model):
 
 
 class AuthGroup(models.Model):
-    name = models.CharField(unique=True, max_length=80)
+    name = models.CharField(unique=True, max_length=150)
 
     class Meta:
         managed = False
@@ -167,7 +178,7 @@ class AuthUser(models.Model):
     last_login = models.DateTimeField(blank=True, null=True)
     is_superuser = models.IntegerField()
     username = models.CharField(unique=True, max_length=150)
-    first_name = models.CharField(max_length=30)
+    first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
     email = models.CharField(max_length=254)
     is_staff = models.IntegerField()
