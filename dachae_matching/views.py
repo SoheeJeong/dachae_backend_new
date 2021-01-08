@@ -99,7 +99,7 @@ def set_user_image_upload(request):
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 으로 바꾸기
 
-    filename = servertime + upload_files[0].name #저장할 파일명 지정
+    filename = server_time + upload_files[0].name #저장할 파일명 지정
     save_path = os.path.join(upload_file_path, filename)
     default_storage.save(save_path, upload_files[0])
     file_addr = settings.MEDIA_ROOT+save_path
