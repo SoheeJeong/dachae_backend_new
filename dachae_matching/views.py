@@ -81,7 +81,10 @@ def set_user_image_upload(request):
     '''
     사용자 로컬이미지 업로드 -> set into storage
     '''
-    servertime = '101104' #TODO : servertime 가져오기
+    # server time 
+    tz = pytz.timezone('Asia/Seoul')
+    server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    
     user_id = request.POST.get("user_id", None) 
     upload_files = request.FILES.getlist('file')
     upload_file_path = os.path.join(user_id)
@@ -90,11 +93,11 @@ def set_user_image_upload(request):
         raise DataBaseException #TODO : 업로드된 파일이 없습니다 exception 추가 후 바꾸기
     if len(upload_files)>1:
         raise DataBaseException #TODO : 파일을 1장만 업로드해주세요 exception 추가 후 바꾸기
-
-    filename = upload_files[0].name
-    #파일 확장자 검사 #TODO: user delimiter
-    #if filename[-3:] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
-    #    raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 으로 바꾸기
+    
+    #파일 확장자 검사
+    filename = upload_files[0].name.split('.')
+    if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
+        raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 으로 바꾸기
 
     filename = servertime + upload_files[0].name #저장할 파일명 지정
     save_path = os.path.join(upload_file_path, filename)
@@ -102,6 +105,7 @@ def set_user_image_upload(request):
     file_addr = settings.MEDIA_ROOT+save_path
     
     #TODO : TB_UPLOAD_INFO 에 정보 저장
+
     data = {
             "result": "succ",
             "msg": "메세지",
@@ -158,13 +162,14 @@ def exec_recommend(request):
             }
         }
     }
-    
     return Response(data)
 
 # 찜, 구매
 @api_view(["GET"])
 def set_wish_list(request):
-    server_time = 4 #TODO: server time 넣기
+    # server time 
+    tz = pytz.timezone('Asia/Seoul')
+    server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
     
     user_id = request.GET.get("user_id",None)
     img_id = request.GET.get("img_id",None)
@@ -186,6 +191,10 @@ def set_wish_list(request):
 
 @api_view(["DELETE"])
 def del_wish_list(request):
+    # server time 
+    tz = pytz.timezone('Asia/Seoul')
+    server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+
     user_id = request.GET.get("user_id",None)
     img_id = request.GET.get("img_id",None)
     if not user_id or not img_id:
@@ -205,10 +214,9 @@ def del_wish_list(request):
 
 @api_view(["GET"])
 def exec_purchase(request):
-    # TODO: server time 세팅하기
+    # server time 
     tz = pytz.timezone('Asia/Seoul')
     server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-    print(type(server_time),server_time)
 
     # get params
     user_id = request.GET.get("user_id",None)
@@ -222,23 +230,21 @@ def exec_purchase(request):
         raise DataBaseException #TODO: 제휴사 없음 팝업?
     
     # purchase_info table 에 새로운 row로 구매정보 저장
-    #try:
-    TbPurchaseInfo.objects.create(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000) #TODO : price 변경 (어떡할지?)
-    purchase_item = TbPurchaseInfo.objects.filter(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000)
-    print(purchase_item.values("purchase_id"))
-    #purchase_id = purchase_item.values("purchase_id")[0]["purchase_id"] #TODO: 방금 생성한 item 의 pk 얻는법 이게 최선?
-    purchase_id = 3 #temp
-    #except:
-    #    raise DataBaseException
+    try:
+        TbPurchaseInfo.objects.create(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000) #TODO : price 변경 (어떡할지?)
+        purchase_item = TbPurchaseInfo.objects.filter(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000)
+        purchase_id = purchase_item.values("purchase_id")[0]["purchase_id"] #TODO: 방금 생성한 item 의 pk 얻는법 이게 최선?
+    except:
+        raise DataBaseException
 
     # matching 후 구매 시 TB_UPLOAD_INFO 에 purchase_id 저장
-    #try:
-    if room_img is not None:
-        upload_info = TbUploadInfo.objects.get(user_id=user_id, room_img=room_img)
-        upload_info.purchase_id = purchase_id
-        upload_info.save()
-    #except:
-    #    raise DataBaseException
+    try:
+        if room_img is not None:
+            upload_info = TbUploadInfo.objects.get(user_id=user_id, room_img=room_img)
+            upload_info.purchase_id = purchase_id
+            upload_info.save()
+    except:
+        raise DataBaseException
 
     data = {
         "result": "succ",
