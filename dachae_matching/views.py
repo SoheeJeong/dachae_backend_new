@@ -112,6 +112,7 @@ def exec_recommend(request):
     매칭 수행
     '''
     upload_id = request.GET.get("upload_id",None)  
+    # TODO: get label list param
     if not upload_id:
         raise DataBaseException #TODO: no parameter exception 으로 바꾸기
 
