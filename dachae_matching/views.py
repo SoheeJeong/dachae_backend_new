@@ -159,15 +159,6 @@ def exec_recommend(request):
     
     return Response(data)
 
-@api_view(["GET"])
-def get_recommend_result(request):
-    '''
-    매칭 결과 보여주기
-    '''
-    data = {"data":"temp"}
-    return Response(data)
-
-
 # 찜, 구매
 @csrf_exempt
 @api_view(["POST"])
