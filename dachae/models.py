@@ -63,8 +63,9 @@ class TbLabelInfo(models.Model):
 class TbPurchaseInfo(models.Model):
     purchase_id = models.AutoField(primary_key=True)
     user_id = models.CharField(max_length=40, blank=True, null=True)
+    image_id = models.PositiveIntegerField()
     server_time = models.DateTimeField(blank=True, null=True)
-    company_id = models.IntegerField(blank=True, null=True)
+    company = models.ForeignKey(TbCompanyInfo, models.DO_NOTHING)
     price = models.CharField(max_length=45, blank=True, null=True)
 
     class Meta:
@@ -135,9 +136,9 @@ class TbUserLog(models.Model):
 
 class TbWishlistInfo(models.Model):
     wish_id = models.AutoField(primary_key=True)
-    user_id = models.CharField(max_length=40, blank=True, null=True)
-    image_id = models.IntegerField(blank=True, null=True)
-    servertime = models.DateTimeField(blank=True, null=True)
+    user_id = models.CharField(max_length=40)
+    image_id = models.PositiveIntegerField()
+    server_time = models.DateTimeField()
 
     class Meta:
         managed = False
