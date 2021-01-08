@@ -166,3 +166,33 @@ def get_recommend_result(request):
     '''
     data = {"data":"temp"}
     return Response(data)
+
+
+# 찜, 구매
+@csrf_exempt
+@api_view(["POST"])
+def setWishList(request):
+    data = {
+            "result": "succ",
+            "msg": "메세지"
+            }
+    return Response(data)
+
+@api_view(["DELETE"])
+def delWishList(request):
+    data = {
+            "result": "succ",
+            "msg": "메세지"
+            }
+    return Response(data)
+
+@api_view(["GET"])
+def execPurchase(request):
+    data = {
+        "result": "succ",
+        "msg": "메세지",
+        "data":{
+        "link": "https://artvee.com/dl/alma-parens"
+        }
+    }
+    return Response(data)
