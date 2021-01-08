@@ -134,6 +134,7 @@ class Recommendation():
         compl_title_temp, compl_img_temp = [],[]
         mono_title_temp, mono_img_temp = [],[]
         
+        #TODO : change return type (array[dict,dict,..])
         for i in range(1,4): 
             for center in self.clt.cluster_centers_:
                 h,s,v = Recommendation.revised_rgb_to_hsv(self,center[0],center[1],center[2])

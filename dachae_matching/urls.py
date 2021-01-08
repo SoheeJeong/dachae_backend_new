@@ -8,5 +8,7 @@ urlpatterns = [
     path('getLabelList/', views.get_label_list, name='getLabelList'),
     path('setUserImageUpload/', views.set_user_image_upload, name='setUserImageUpload'),
     path('execRecommend/', views.exec_recommend, name='execRecommend'),
-    path('getRecommendResult/', views.get_recommend_result, name='getRecommendResult'),
+    path('setWishList/', views.set_wish_list, name='setWishList'),
+    path('delWishList/', views.del_wish_list, name='delWishList'),
+    path('execPurchase/', views.exec_purchase, name='execPurchase'),
 ]
