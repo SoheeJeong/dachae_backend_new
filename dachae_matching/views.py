@@ -82,24 +82,22 @@ def set_user_image_upload(request):
     upload_files = request.FILES.getlist('file')
     upload_file_path = os.path.join(user_id)
 
-    print(upload_files)
-
-    file_addr_list = []
     if not upload_files: #업로드된 파일이 없을 경우
         raise DataBaseException #TODO 업로드된 파일이 없습니다 exception 추가 후 바꾸기
     if len(upload_files)>1:
         raise DataBaseException #TODO 파일을 1장만 업로드해주세요 exception 추가 후 바꾸기
 
-    for file in upload_files :
-        filename = servertime + file.name
-        save_path = os.path.join(upload_file_path, filename)
-        default_storage.save(save_path, file)
-        file_addr_list.append(settings.MEDIA_ROOT+save_path)
+    filename = servertime + upload_files[0].name
+    save_path = os.path.join(upload_file_path, filename)
+    default_storage.save(save_path, upload_files[0])
+    file_addr = settings.MEDIA_ROOT+save_path
         
     #TODO TB_UPLOAD_INFO 에 정보 저장
     data = {
-        "save_complete" : file_addr_list,
-    }
+            "result": "succ",
+            "msg": "메세지",
+            "file_addr" : file_addr,
+            }
     return Response(data)
 
 @csrf_exempt
