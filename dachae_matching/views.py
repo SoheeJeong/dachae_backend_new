@@ -9,15 +9,18 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
+
 import os
 import requests
 import json
-import datetime
+import pytz
+from datetime import datetime,timezone,timedelta
+import time
 import random
 import base64
 
 from .matching import GetImageColor, Recommendation
-from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo
+from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo
 from dachae.exceptions import DataBaseException
 
 @api_view(["GET"])
@@ -143,7 +146,6 @@ def exec_recommend(request):
     data = {
         'result':'succ',
         'msg':'message',
-        'matching':1, #matching default 0
         'recommend':{
             'upload_id':upload_id,
             'room_img':room_img_path,
@@ -160,17 +162,41 @@ def exec_recommend(request):
     return Response(data)
 
 # 찜, 구매
-@csrf_exempt
-@api_view(["POST"])
-def setWishList(request):
+@api_view(["GET"])
+def set_wish_list(request):
+    server_time = 4 #TODO: server time 넣기
+    
+    user_id = request.GET.get("user_id",None)
+    img_id = request.GET.get("img_id",None)
+    if not user_id or not img_id:
+        raise DatabaseError #TODO: no parameter error 로 변경
+    
+    try:
+        print("wishlist table 삽입")
+        #TODO: img_id, user_id, server_time 를 wishlist table 에 넣기
+    except: 
+        raise DatabaseError
+
     data = {
             "result": "succ",
             "msg": "메세지"
             }
+
     return Response(data)
 
 @api_view(["DELETE"])
-def delWishList(request):
+def del_wish_list(request):
+    user_id = request.GET.get("user_id",None)
+    img_id = request.GET.get("img_id",None)
+    if not user_id or not img_id:
+        raise DatabaseError #TODO: no parameter error 로 변경
+    
+    try:
+        print("wishlist table 에서 삭제")
+        #TODO: img_id, user_id 에 해당하는 row를 wishlist table 에서 삭제하기
+    except: 
+        raise DatabaseError
+
     data = {
             "result": "succ",
             "msg": "메세지"
@@ -178,12 +204,47 @@ def delWishList(request):
     return Response(data)
 
 @api_view(["GET"])
-def execPurchase(request):
+def exec_purchase(request):
+    # TODO: server time 세팅하기
+    tz = pytz.timezone('Asia/Seoul')
+    server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    print(type(server_time),server_time)
+
+    # get params
+    user_id = request.GET.get("user_id",None)
+    img_id = request.GET.get("img_id",None)
+    room_img = request.GET.get("room_img",None) #매칭에서 넘어온 경우 room_img is not None
+    company_id = request.GET.get("company_id",None)
+    # param check
+    if not user_id or not img_id:
+        raise DataBaseException #TODO: no parameter error 로 변경
+    if not company_id:
+        raise DataBaseException #TODO: 제휴사 없음 팝업?
+    
+    # purchase_info table 에 새로운 row로 구매정보 저장
+    #try:
+    TbPurchaseInfo.objects.create(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000) #TODO : price 변경 (어떡할지?)
+    purchase_item = TbPurchaseInfo.objects.filter(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000)
+    print(purchase_item.values("purchase_id"))
+    #purchase_id = purchase_item.values("purchase_id")[0]["purchase_id"] #TODO: 방금 생성한 item 의 pk 얻는법 이게 최선?
+    purchase_id = 3 #temp
+    #except:
+    #    raise DataBaseException
+
+    # matching 후 구매 시 TB_UPLOAD_INFO 에 purchase_id 저장
+    #try:
+    if room_img is not None:
+        upload_info = TbUploadInfo.objects.get(user_id=user_id, room_img=room_img)
+        upload_info.purchase_id = purchase_id
+        upload_info.save()
+    #except:
+    #    raise DataBaseException
+
     data = {
         "result": "succ",
         "msg": "메세지",
         "data":{
-        "link": "https://artvee.com/dl/alma-parens"
+        "link": "https://artvee.com/dl/alma-parens" #TODO: 실제 제휴사 링크로 바꾸기
         }
     }
     return Response(data)
