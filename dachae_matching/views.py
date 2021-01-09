@@ -18,6 +18,7 @@ from dachae.exceptions import DataBaseException #TODO: add more exceptions
 MAX_LABEL_NUM = 5 #라벨 선택 최대 허용 개수
 
 #TODO: timezone error 수정
+#TODO: 필요한곳에 권한체크 추가
 
 ##### 검색, 업로드, 매칭 #####
 
