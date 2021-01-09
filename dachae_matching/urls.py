@@ -3,6 +3,7 @@ from . import views
 
 app_name = 'matching'
 urlpatterns = [
+    path('s3Test/',views.s3_test,name="s3Test"),
     path('getPictureFilteredResult/', views.get_picture_filtered_result, name='getPictureFilteredResult'),
     path('getPictureDetailInfo/', views.get_picture_detail_info, name='getInferenceSetting'),
     path('getLabelList/', views.get_label_list, name='getLabelList'),

@@ -15,10 +15,24 @@ from .matching import GetImageColor, Recommendation
 from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo
 from dachae.exceptions import DataBaseException #TODO: add more exceptions
 
-MAX_LABEL_NUM = 5 #라벨 선택 최대 허용 개수
+MAX_LABEL_NUM = 3 #라벨 선택 최대 허용 개수
+ARTWORK_LABEL_NUM = 1 #명화 1개당 라벨 개수
 
 #TODO: timezone error 수정
 #TODO: 필요한곳에 권한체크 추가
+
+# S3 client
+import boto3
+AWS_S3_CREDS = {
+    "aws_access_key_id": os.getenv("AWS_ACCESS_KEY"),
+    "aws_secret_access_key":os.getenv("AWS_SECRET_KEY")
+}
+s3_client = boto3.client('s3',**AWS_S3_CREDS)
+
+@api_view(['GET'])
+def s3_test(request):
+    s3_client.download_file('dachaeartwork','Starry Night.jpg',os.path.join(settings.MEDIA_ROOT,'bucket/starry_night.jpg'))
+    return Response({"result":"succ"})
 
 ##### 검색, 업로드, 매칭 #####
 
@@ -59,12 +73,28 @@ def get_picture_detail_info(request):
     if not img_id:
         raise DataBaseException
 
-    image_info = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price")
+    image_info = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price","label_id")#,"label1_id","label2_id","label3_id","label4_id","label5_id")
     image_data = image_info[0] #unique item
     company_nm = TbCompanyInfo.objects.filter(company_id=image_data["company_id"]).values("company_nm")
     
     del image_data["company_id"]
     image_data.update(company_nm[0])
+
+    # 명화의 라벨 리스트 생성
+    label_list = []
+    for i in range(1,ARTWORK_LABEL_NUM+1):
+        col_nm = "label"+"_id" #+str(i)+"_id"
+        label_id = image_data[col_nm]
+        if label_id is not None:
+            try:
+                label_nm = TbLabelInfo.objects.filter(label_id=label_id).values("label_nm")[0]
+                label_list.append(label_nm["label_nm"])
+            except:
+                raise DataBaseException
+
+    image_data.update({
+        "label_list":label_list
+    })
 
     data = {
             "result": "succ",
@@ -285,7 +315,7 @@ def exec_purchase(request):
     except:
         raise DataBaseException
 
-    # 실제 제휴사 링크 얻기
+    # 제휴사 링크
     site_url = TbCompanyInfo.objects.filter(company_id=company_id).values("site_url")[0]
 
     data = {
