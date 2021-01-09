@@ -71,7 +71,7 @@ class TbPurchaseInfo(models.Model):
 
 class TbSampleList(models.Model):
     sample_id = models.AutoField(primary_key=True)
-    sample_path = models.CharField(max_length=50)
+    sample_path = models.CharField(max_length=70)
     artwork = models.ForeignKey(TbArkworkInfo, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
