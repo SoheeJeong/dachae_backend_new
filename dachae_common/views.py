@@ -1,12 +1,14 @@
-#TODO TbArtworkInfo 를 샘플사진리스트 테이블로 바꾸기
 
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 
-from dachae.models import TbArkworkInfo,TbUserInfo,TbUserLog 
+from dachae.models import TbArkworkInfo,TbUserInfo,TbUserLog  #TODO TbArtworkInfo 를 샘플사진리스트 테이블로 바꾸기
 from dachae.exceptions import DataBaseException
+
+#TODO: timezone error 수정
+#TODO: 필요한곳에 권한체크 추가
 
 @csrf_exempt
 @api_view(["POST"])
