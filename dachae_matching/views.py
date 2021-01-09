@@ -17,14 +17,36 @@ from dachae.exceptions import DataBaseException #TODO: add more exceptions
 
 MAX_LABEL_NUM = 5 #라벨 선택 최대 허용 개수
 
+#TODO: timezone error 수정
+
 ##### 검색, 업로드, 매칭 #####
 
-@api_view(["GET"])
+@csrf_exempt
+@api_view(["POST"])
 def get_picture_filtered_result(request):
     '''
     키워드 및 느낌라벨로 명화 검색
     '''
-    data = {"data":"temp"}
+    body = json.loads(request.body.decode("utf-8"))
+    keyword = body["keyword"] 
+    label_list = body["label_list"] #label_list 에 포함된 라벨 합집합 or 교집합? 교집합이 나을듯 ㅇㅇ 합집합이면 라벨 선택 해제하면 되니까
+
+    #키워드가 포함된것 검색 #TODO: 검색, filter 기준 정립 필요
+    title_query = TbArkworkInfo.objects.filter(title__icontains=keyword)
+    author_query = TbArkworkInfo.objects.filter(author__icontains=keyword)
+    era_query = TbArkworkInfo.objects.filter(era__icontains=keyword)
+    style_query = TbArkworkInfo.objects.filter(style__icontains=keyword)
+
+    #TODO: 어떤 기준으로 정렬해서 보여줄건지 (order_by 수정)
+    #TODO: 정렬 기준 받는 란? 00순으로 보기 이런거
+    total_query = title_query.union(author_query).union(era_query).union(style_query).order_by("image_id") 
+    result_image_list = total_query.values("img_path","image_id")
+
+    data = {
+        "result": "succ",
+        "msg": "메세지",
+        "data" : result_image_list,
+    }
     return Response(data)
 
 @api_view(["GET"])
@@ -86,20 +108,20 @@ def set_user_image_upload(request):
     upload_file_path = os.path.join(user_id)
 
     if not upload_files: #업로드된 파일이 없을 경우
-        raise DataBaseException #TODO : 업로드된 파일이 없습니다 exception 추가 후 바꾸기
+        raise DataBaseException #TODO : 업로드된 파일이 없습니다 exception 추가
     if len(upload_files)>1:
-        raise DataBaseException #TODO : 파일을 1장만 업로드해주세요 exception 추가 후 바꾸기
+        raise DataBaseException #TODO : 파일을 1장만 업로드해주세요 exception 추가
     
     #파일 확장자 검사
     filename = upload_files[0].name.split('.')
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
-        raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 으로 바꾸기
-    
+        raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 추가
+
+    #TODO: 스토리지에 저장?
     filename = server_time + upload_files[0].name #저장할 파일명 지정
     save_path = os.path.join(upload_file_path, filename)
     default_storage.save(save_path, upload_files[0])
     file_addr = settings.MEDIA_ROOT+save_path
-    #TODO: 스토리지에 저장?
 
     #TB_UPLOAD_INFO 에 정보 저장
     try:
@@ -112,6 +134,7 @@ def set_user_image_upload(request):
             "msg": "메세지",
             "file_addr" : file_addr,
             }
+
     return Response(data)
 
 @csrf_exempt
@@ -145,11 +168,13 @@ def exec_recommend(request):
     pic_data = TbArkworkInfo.objects.values('image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
 
     #exec recommend
+    #TODO: img path 만 넘겨주고 스토리지에서 이미지 가져오는건 matching.py 에서?
+    #TODO: 아니면 backend 에 저장해 놓고 일단 추천 돌린 후 -> matching.py(or 다른 service) 에서 스토리지에 저장 -> 새로운 storage room path 와 clt path 을 matching.py 로부터 return 받기?
     getimgcolor = GetImageColor(room_img_path)
     clt =  getimgcolor.get_meanshift() #room color clt with meanshift
     clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path
 
-    #TODO: 선택된 label과 clustering 결과 이미지 path를 Tb_upload_info에 저장
+    #선택된 label과 clustering 결과 이미지 path를 Tb_upload_info에 저장
     try:
         TbUploadInfo.objects.filter(upload_id=upload_id).update(clustering_img=clt_path,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2],label4_id=label_id_list[3],label5_id=label_id_list[4])
     except:
@@ -157,7 +182,8 @@ def exec_recommend(request):
 
     analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
     
-    #TODO: add filtering by label function here (filter criteria: label_list)
+    #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list)
+    #matching.py 에서 아얘 라벨 필터링까지 한 결과를 반환하도록 할지? 아니면 여기서 필터링할지?
 
     data = {
         'result':'succ',
@@ -190,7 +216,7 @@ def set_wish_list(request):
     if not user_id or not img_id:
         raise DataBaseException #TODO: no parameter error 로 변경
     
-    #TODO: img_id, user_id, server_time 를 wishlist table 에 넣기
+    # img_id, user_id, server_time 를 wishlist table 에 넣기
     try:
         wishlist = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
         if len(wishlist)==0: #존재하지 않는 row -> 새로 table에 삽입
@@ -258,7 +284,7 @@ def exec_purchase(request):
     except:
         raise DataBaseException
 
-    #실제 제휴사 링크 얻기
+    # 실제 제휴사 링크 얻기
     site_url = TbCompanyInfo.objects.filter(company_id=company_id).values("site_url")[0]
 
     data = {

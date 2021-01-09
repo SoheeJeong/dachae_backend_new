@@ -78,7 +78,7 @@ class GetImageColor():
         image = self.preprocess_image()
 
         bandwidth = estimate_bandwidth(image, quantile=0.1, n_samples=200) #128*128에 이 파라미터가 적절한듯(조정)
-        print('bandwidth:',bandwidth)
+        #print('bandwidth:',bandwidth)
         ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
         ms.fit(image)
         
@@ -106,7 +106,6 @@ class GetImageColor():
         plt.imshow(bar)
         #TODO: save path 경로 바꾸기 / or / storage 에 저장
         temp_path = self.imgurl.split('.') #TODO: use delimiter
-        print(temp_path[:len(temp_path)-1])
         save_path = "".join(temp_path[:len(temp_path)-1]) + '_clustering_result.png'
         plt.savefig(save_path)
         return save_path
