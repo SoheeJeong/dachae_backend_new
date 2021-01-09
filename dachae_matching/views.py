@@ -15,6 +15,7 @@ from .matching import GetImageColor, Recommendation
 from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo
 from dachae.exceptions import DataBaseException #TODO: add more exceptions
 
+MAX_LABEL_NUM = 5 #라벨 선택 최대 허용 개수
 
 ##### 검색, 업로드, 매칭 #####
 
@@ -93,13 +94,18 @@ def set_user_image_upload(request):
     filename = upload_files[0].name.split('.')
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 으로 바꾸기
-
+    
     filename = server_time + upload_files[0].name #저장할 파일명 지정
     save_path = os.path.join(upload_file_path, filename)
     default_storage.save(save_path, upload_files[0])
     file_addr = settings.MEDIA_ROOT+save_path
-    
-    #TODO : TB_UPLOAD_INFO 에 정보 저장
+    #TODO: 스토리지에 저장?
+
+    #TB_UPLOAD_INFO 에 정보 저장
+    try:
+        TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
+    except: 
+       raise DataBaseException
 
     data = {
             "result": "succ",
@@ -120,15 +126,20 @@ def exec_recommend(request):
         raise DataBaseException #TODO: no parameter exception 으로 바꾸기
 
     label_list = body["label_list"]
-    chosen_label = []
-    for label in label_list:
-        chosen_label.append(label["label_nm"])    
+    if len(label_list) > MAX_LABEL_NUM:
+        raise DataBaseException #TODO: 라벨 개수가 너무 많습니다 exception -> 팝업 띄우기
+
+    label_nm_list, label_id_list = [],[]
+    for i in range(MAX_LABEL_NUM):
+        if i<len(label_list):
+            label_nm_list.append(label_list[i]["label_nm"]) 
+            label_id_list.append(label_list[i]["label_id"])
+        else:
+            label_id_list.append(None)   
 
     room_img_info = TbUploadInfo.objects.values("room_img") #user upload image path (backend)
     room_img_path = room_img_info[0]["room_img"]
-
-    #temp path for debug - TODO: MUST delete below line after debug
-    room_img_path = os.path.join(settings.MEDIA_ROOT,"sohee/101104index.jpeg")
+    room_img_path = os.path.join(settings.MEDIA_ROOT,"sohee/101104index.jpeg") #temp path for debug - TODO: MUST delete below line after debug
 
     #load artwork data
     pic_data = TbArkworkInfo.objects.values('image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
@@ -139,7 +150,10 @@ def exec_recommend(request):
     clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path
 
     #TODO: 선택된 label과 clustering 결과 이미지 path를 Tb_upload_info에 저장
-
+    try:
+        TbUploadInfo.objects.filter(upload_id=upload_id).update(clustering_img=clt_path,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2],label4_id=label_id_list[3],label5_id=label_id_list[4])
+    except:
+        raise DataBaseException
 
     analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
     
@@ -152,7 +166,7 @@ def exec_recommend(request):
             'upload_id':upload_id,
             'room_img':room_img_path,
             'clustering_result':clt_path,
-            'chosen_label':chosen_label,
+            'chosen_label':label_nm_list,
             'recommend_images':{
                 'analog':analog['img_path'],
                 'comp':comp['img_path'],

@@ -91,7 +91,7 @@ class GetImageColor():
         hist = hist.astype("float")
         hist /= hist.sum()
         centroids = clt.cluster_centers_
-
+ 
         #plot colors
         bar = np.zeros((50, 300, 3), dtype="uint8")
         start_x = 0
@@ -104,7 +104,10 @@ class GetImageColor():
         plt.figure()
         plt.axis('on')
         plt.imshow(bar)
-        save_path = self.imgurl[:-4]+'_cluster_result.png' #TODO: use delimiter
+        #TODO: save path 경로 바꾸기 / or / storage 에 저장
+        temp_path = self.imgurl.split('.') #TODO: use delimiter
+        print(temp_path[:len(temp_path)-1])
+        save_path = "".join(temp_path[:len(temp_path)-1]) + '_clustering_result.png'
         plt.savefig(save_path)
         return save_path
 
@@ -129,7 +132,7 @@ class Recommendation():
     def recommend_pic(self): 
         #convert tuple into dataframe
         df = pd.DataFrame(self.data, columns =['image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path'])
-        print('df:',df)
+        #print('df:',df)
         analog_title_temp, analog_img_temp = [],[]
         compl_title_temp, compl_img_temp = [],[]
         mono_title_temp, mono_img_temp = [],[]
