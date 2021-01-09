@@ -26,11 +26,7 @@ class TbArkworkInfo(models.Model):
     h3 = models.PositiveIntegerField(blank=True, null=True)
     s3 = models.PositiveIntegerField(blank=True, null=True)
     v3 = models.PositiveIntegerField(blank=True, null=True)
-    label1_id = models.IntegerField(blank=True, null=True)
-    label2_id = models.IntegerField(blank=True, null=True)
-    label3_id = models.IntegerField(blank=True, null=True)
-    label4_id = models.IntegerField(blank=True, null=True)
-    label5_id = models.IntegerField(blank=True, null=True)
+    label = models.ForeignKey('TbLabelInfo', models.DO_NOTHING)
 
     class Meta:
         managed = False
@@ -51,7 +47,7 @@ class TbCompanyInfo(models.Model):
 
 
 class TbLabelInfo(models.Model):
-    label_id = models.AutoField(primary_key=True)
+    label_id = models.PositiveIntegerField(primary_key=True)
     label_nm = models.CharField(max_length=50)
     label_freq = models.PositiveIntegerField(blank=True, null=True)
 
@@ -85,13 +81,13 @@ class TbSampleList(models.Model):
 
 class TbUploadInfo(models.Model):
     upload_id = models.AutoField(primary_key=True)
-    user_id = models.CharField(max_length=40, blank=True, null=True)
-    server_time = models.DateTimeField(blank=True, null=True)
-    room_img = models.CharField(max_length=1000, blank=True, null=True)
+    user_id = models.CharField(max_length=40)
+    server_time = models.DateTimeField()
+    room_img = models.CharField(max_length=1000)
     clustering_img = models.CharField(max_length=1000, blank=True, null=True)
-    label1_id = models.IntegerField()
-    label2_id = models.IntegerField()
-    label3_id = models.IntegerField()
+    label1_id = models.IntegerField(blank=True, null=True)
+    label2_id = models.IntegerField(blank=True, null=True)
+    label3_id = models.IntegerField(blank=True, null=True)
     label4_id = models.IntegerField(blank=True, null=True)
     label5_id = models.IntegerField(blank=True, null=True)
     img_id = models.CharField(max_length=45, blank=True, null=True)
@@ -122,7 +118,7 @@ class TbUserInfo(models.Model):
 
 
 class TbUserLog(models.Model):
-    session_id = models.PositiveIntegerField(primary_key=True)
+    session_id = models.AutoField(primary_key=True)
     page_id = models.PositiveIntegerField(blank=True, null=True)
     server_time = models.DateTimeField()
     user = models.ForeignKey(TbUserInfo, models.DO_NOTHING)
