@@ -1,9 +1,4 @@
-from django.contrib import messages
-from django.db import DatabaseError, connection
-from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
-from django.shortcuts import render, redirect
 from django.conf import settings
-from django.core import serializers
 from django.core.files.storage import default_storage
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
@@ -14,14 +9,14 @@ import os
 import requests
 import json
 import pytz
-from datetime import datetime,timezone,timedelta
-import time
-import random
-import base64
+from datetime import datetime,timezone
 
 from .matching import GetImageColor, Recommendation
 from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo
-from dachae.exceptions import DataBaseException
+from dachae.exceptions import DataBaseException #TODO: add more exceptions
+
+
+##### 검색, 업로드, 매칭 #####
 
 @api_view(["GET"])
 def get_picture_filtered_result(request):
@@ -142,9 +137,12 @@ def exec_recommend(request):
     getimgcolor = GetImageColor(room_img_path)
     clt =  getimgcolor.get_meanshift() #room color clt with meanshift
     clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path
-    #TODO: set chosen label data and clustering result data in Tb_upload_info
+
+    #TODO: 선택된 label과 clustering 결과 이미지 path를 Tb_upload_info에 저장
+
 
     analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
+    
     #TODO: add filtering by label function here (filter criteria: label_list)
 
     data = {
@@ -164,7 +162,9 @@ def exec_recommend(request):
     }
     return Response(data)
 
-# 찜, 구매
+
+##### 찜, 구매 #####
+
 @api_view(["GET"])
 def set_wish_list(request):
     # server time 
@@ -174,13 +174,15 @@ def set_wish_list(request):
     user_id = request.GET.get("user_id",None)
     img_id = request.GET.get("img_id",None)
     if not user_id or not img_id:
-        raise DatabaseError #TODO: no parameter error 로 변경
+        raise DataBaseException #TODO: no parameter error 로 변경
     
+    #TODO: img_id, user_id, server_time 를 wishlist table 에 넣기
     try:
-        print("wishlist table 삽입")
-        #TODO: img_id, user_id, server_time 를 wishlist table 에 넣기
+        wishlist = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
+        if len(wishlist)==0: #존재하지 않는 row -> 새로 table에 삽입
+            TbWishlistInfo.objects.create(user_id=user_id,image_id=img_id,server_time=server_time)
     except: 
-        raise DatabaseError
+       raise DataBaseException
 
     data = {
             "result": "succ",
@@ -190,21 +192,16 @@ def set_wish_list(request):
     return Response(data)
 
 @api_view(["DELETE"])
-def del_wish_list(request):
-    # server time 
-    tz = pytz.timezone('Asia/Seoul')
-    server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
-
-    user_id = request.GET.get("user_id",None)
-    img_id = request.GET.get("img_id",None)
+def del_wish_list(request,user_id,img_id):
+    # param check
     if not user_id or not img_id:
-        raise DatabaseError #TODO: no parameter error 로 변경
+        raise DataBaseException #TODO: no parameter error 로 변경
     
+    # wishlist table 에서 삭제하기
     try:
-        print("wishlist table 에서 삭제")
-        #TODO: img_id, user_id 에 해당하는 row를 wishlist table 에서 삭제하기
+        TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).delete()
     except: 
-        raise DatabaseError
+        raise DataBaseException
 
     data = {
             "result": "succ",
@@ -223,11 +220,12 @@ def exec_purchase(request):
     img_id = request.GET.get("img_id",None)
     room_img = request.GET.get("room_img",None) #매칭에서 넘어온 경우 room_img is not None
     company_id = request.GET.get("company_id",None)
+
     # param check
     if not user_id or not img_id:
         raise DataBaseException #TODO: no parameter error 로 변경
     if not company_id:
-        raise DataBaseException #TODO: 제휴사 없음 팝업?
+        raise DataBaseException #TODO: 제휴사 없음 팝업
     
     # purchase_info table 에 새로운 row로 구매정보 저장
     try:
@@ -246,11 +244,14 @@ def exec_purchase(request):
     except:
         raise DataBaseException
 
+    #실제 제휴사 링크 얻기
+    site_url = TbCompanyInfo.objects.filter(company_id=company_id).values("site_url")[0]
+
     data = {
         "result": "succ",
         "msg": "메세지",
         "data":{
-        "link": "https://artvee.com/dl/alma-parens" #TODO: 실제 제휴사 링크로 바꾸기
+        "link": site_url["site_url"]
         }
     }
     return Response(data)
