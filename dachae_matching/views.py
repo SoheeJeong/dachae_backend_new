@@ -16,7 +16,7 @@ from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,T
 from dachae.exceptions import DataBaseException #TODO: add more exceptions
 
 MAX_LABEL_NUM = 3 #라벨 선택 최대 허용 개수
-ARTWORK_LABEL_NUM = 1 #명화 1개당 라벨 개수
+ARTWORK_LABEL_NUM = 3 #명화 1개당 라벨 개수
 
 #TODO: timezone error 수정
 #TODO: 필요한곳에 권한체크 추가
@@ -43,19 +43,23 @@ def get_picture_filtered_result(request):
     키워드 및 느낌라벨로 명화 검색
     '''
     body = json.loads(request.body.decode("utf-8"))
-    keyword = body["keyword"] 
     label_list = body["label_list"] #label_list 에 포함된 라벨 합집합 or 교집합? 교집합이 나을듯 ㅇㅇ 합집합이면 라벨 선택 해제하면 되니까
 
-    #키워드가 포함된것 검색 #TODO: 검색, filter 기준 정립 필요
-    title_query = TbArkworkInfo.objects.filter(title__icontains=keyword)
-    author_query = TbArkworkInfo.objects.filter(author__icontains=keyword)
-    era_query = TbArkworkInfo.objects.filter(era__icontains=keyword)
-    style_query = TbArkworkInfo.objects.filter(style__icontains=keyword)
+    if len(label_list)==0:
+        result_image_list = TbArkworkInfo.objects.values("img_path","image_id")
+    else:
+        #TODO: 검색, filter 기준 정립 필요
+        first_label = label_list[0]["label_id"]
+        label_query = TbArkworkInfo.objects.filter(label1_id=first_label,label2_id=first_label,label3_id=first_label) #label_query 초기화:None
+        for label_dict in label_list: #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork 합집합
+            label_query = label_query.union(TbArkworkInfo.objects.filter(label1_id=label_dict["label_id"]))
+            label_query = label_query.union(TbArkworkInfo.objects.filter(label2_id=label_dict["label_id"]))
+            label_query = label_query.union(TbArkworkInfo.objects.filter(label3_id=label_dict["label_id"]))
 
-    #TODO: 어떤 기준으로 정렬해서 보여줄건지 (order_by 수정)
-    #TODO: 정렬 기준 받는 란? 00순으로 보기 이런거
-    total_query = title_query.union(author_query).union(era_query).union(style_query).order_by("image_id") 
-    result_image_list = total_query.values("img_path","image_id")
+        #TODO: 어떤 기준으로 정렬해서 보여줄건지 (order_by 수정)
+        #TODO: 라벨이 많이 포함되어 있는 순으로 정렬?
+        #TODO: 정렬 기준 받는 란? 00순으로 보기 이런거
+        result_image_list = label_query.order_by("image_id").values("img_path","image_id")
 
     data = {
         "result": "succ",
@@ -73,7 +77,7 @@ def get_picture_detail_info(request):
     if not img_id:
         raise DataBaseException
 
-    image_info = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price","label_id")#,"label1_id","label2_id","label3_id","label4_id","label5_id")
+    image_info = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price","label1_id","label2_id","label3_id")#,"label4_id","label5_id")
     image_data = image_info[0] #unique item
     company_nm = TbCompanyInfo.objects.filter(company_id=image_data["company_id"]).values("company_nm")
     
@@ -83,8 +87,10 @@ def get_picture_detail_info(request):
     # 명화의 라벨 리스트 생성
     label_list = []
     for i in range(1,ARTWORK_LABEL_NUM+1):
-        col_nm = "label"+"_id" #+str(i)+"_id"
+        col_nm = "label"+str(i)+"_id"
         label_id = image_data[col_nm]
+        del image_data[col_nm]
+
         if label_id is not None:
             try:
                 label_nm = TbLabelInfo.objects.filter(label_id=label_id).values("label_nm")[0]
