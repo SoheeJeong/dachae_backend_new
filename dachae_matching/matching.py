@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import cv2
+import urllib
 from sklearn.cluster import KMeans, MeanShift, estimate_bandwidth
 from PIL import Image
 import colorsys
@@ -16,7 +17,8 @@ from django.db import DatabaseError, connection
 
 class GetImageColor():
     def __init__(self,imgurl): 
-        self.imgurl = imgurl
+        self.imgurl = str(imgurl)
+        # print(imgurl)
 
     #이미지 픽셀 섞기
     def shuffle_image(self, image):
@@ -25,10 +27,21 @@ class GetImageColor():
         image2 = np.reshape(image2, image.shape)
         return image2
 
+    def url_to_image(self,url):
+        resp = urllib.request.urlopen(url)
+        image = np.asarray(bytearray(resp.read()), dtype="uint8")
+        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+
+        return image
+
     #이미지 로드, 전처리
     def preprocess_image(self):
-        #load image
-        image = cv2.imread(os.path.join(self.imgurl))
+        #load image from url
+        image = self.url_to_image(self.imgurl)
+        
+        #load image from path
+        #image = cv2.imread(os.path.join(self.imgurl))
+        
         ## 밝기조절
         val=10
         array=np.full(image.shape,(val,val,val),dtype=np.uint8)
@@ -104,9 +117,8 @@ class GetImageColor():
         plt.figure()
         plt.axis('on')
         plt.imshow(bar)
-        #TODO: save path 경로 바꾸기 / or / storage 에 저장
-        temp_path = self.imgurl.split('.') #TODO: use delimiter
-        save_path = "".join(temp_path[:len(temp_path)-1]) + '_clustering_result.png'
+        #backend에 임시 저장 후 경로 반환
+        save_path = settings.MEDIA_ROOT+'clt/clusering_result.png'
         plt.savefig(save_path)
         return save_path
 
