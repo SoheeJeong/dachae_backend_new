@@ -4,19 +4,17 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
-# from django.utils import timezone
 
 import os
 import shutil
 import requests
 import sys
 import json
-import pytz
-from datetime import datetime,timezone,timedelta
+from datetime import datetime
 
 from .matching import GetImageColor, Recommendation
 from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo
-from dachae.exceptions import DataBaseException #TODO: add more exceptions
+from dachae.exceptions import DataBaseException #TODO: add exceptions
 
 from dachae.utils import S3Connection
 
@@ -31,6 +29,7 @@ CLUSTER_BUCKET_NAME = os.getenv("CLUSTER_BUCKET_NAME")
 
 #TODO: 세부 기능들을 별개의 service로 쪼개서 refactoring 필요 (일단 쭉 구현하고나서)
 #TODO: 필요한곳에 권한체크 추가
+#TODO: 예외처리 체크
 
 ##### 검색, 업로드, 매칭 #####
 
@@ -47,7 +46,7 @@ def get_picture_filtered_result(request):
         result_image_list = TbArkworkInfo.objects.values("img_path","image_id")
     else:
         #TODO: filter 기준 정립 필요
-        #label_query 초기화:None
+        #label_query 초기화 - empty result
         first_label = label_list[0]["label_id"]
         label_query = TbArkworkInfo.objects.filter(label1_id=first_label,label2_id=first_label,label3_id=first_label) 
         #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork object들의 합집합
@@ -241,6 +240,7 @@ def exec_recommend(request):
 
     #TODO: 예외처리 추가
     #TODO: clustering result 사진 삭제
+    os.remove(clt_path)
 
     #선택된 label과 clustering 결과 이미지 path를 Tb_upload_info에 저장
     try:
@@ -276,7 +276,6 @@ def exec_recommend(request):
 @api_view(["GET"])
 def set_wish_list(request):
     # server time 
-    # tz = timezone(timedelta(hours=9))
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     user_id = request.GET.get("user_id",None)
@@ -286,8 +285,8 @@ def set_wish_list(request):
     
     # img_id, user_id, server_time 를 wishlist table 에 넣기
     try:
-        wishlist = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
-        if len(wishlist)==0: #존재하지 않는 row -> 새로 table에 삽입
+        wish_item = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
+        if len(wish_item)==0: #존재하지 않는 row -> 새로 table에 삽입
             TbWishlistInfo.objects.create(user_id=user_id,image_id=img_id,server_time=server_time)
         else: 
             raise DataBaseException #TODO: 이미 위시리스트에 추가되어 있다로 변경
@@ -309,7 +308,10 @@ def del_wish_list(request,user_id,img_id):
     
     # wishlist table 에서 삭제하기
     try:
-        TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).delete()
+        wish_item = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
+        if len(wish_item)==0: #존재하지 않는 item
+            raise DataBaseException #TODO: 위시리스트에 없는 아이템이다로 변경
+        TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).delete() #삭제 수행
     except: 
         raise DataBaseException
 
@@ -327,7 +329,7 @@ def exec_purchase(request):
     # get params
     user_id = request.GET.get("user_id",None)
     img_id = request.GET.get("img_id",None)
-    room_img = request.GET.get("room_img",None) #매칭에서 넘어온 경우 room_img is not None
+    room_img = request.GET.get("room_img",None) #매칭에서 넘어온 경우만 room_img가 not None
     company_id = request.GET.get("company_id",None)
 
     # param check
