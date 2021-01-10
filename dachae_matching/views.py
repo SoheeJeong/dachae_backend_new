@@ -7,6 +7,7 @@ from rest_framework import status
 
 import os
 import requests
+import sys
 import json
 import pytz
 from datetime import datetime,timezone
@@ -15,32 +16,21 @@ from .matching import GetImageColor, Recommendation
 from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo
 from dachae.exceptions import DataBaseException #TODO: add more exceptions
 
+from dachae.utils import S3Connection
+
+s3connection = S3Connection()
+
 MAX_LABEL_NUM = 3 #라벨 선택 최대 허용 개수
 ARTWORK_LABEL_NUM = 3 #명화 1개당 라벨 개수
 
+ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
+USER_BUCKET_NAME = os.getenv("USER_BUCKET_NAME")
+CLUSTER_BUCKET_NAME = os.getenv("CLUSTER_BUCKET_NAME")
+
+#TODO: 세부 기능들을 별개의 service로 쪼개서 refactoring 필요 (일단 쭉 구현하고나서)
 #TODO: timezone error 수정
 #TODO: 필요한곳에 권한체크 추가
 
-import boto3
-from boto3.s3.transfer import S3Transfer
-
-# S3 client
-AWS_S3_CREDS = {
-    "aws_access_key_id": os.getenv("AWS_ACCESS_KEY"),
-    "aws_secret_access_key":os.getenv("AWS_SECRET_KEY")
-}
-s3_client = boto3.client('s3',**AWS_S3_CREDS)
-
-@api_view(['GET'])
-def s3_test(request):
-    s3_client.download_file(os.getenv("ARTWORK_BUCKET_NAME"),'Starry Night.jpg',os.path.join(settings.MEDIA_ROOT,'bucket/starry_night.jpg'))
-    return Response({"result":"succ"})
-
-def upload_into_s3(filepath,bucket,key):
-    transfer = S3Transfer(s3_client)
-    transfer.upload_file(filepath,bucket,key)
-    s3_file_url = '%s/%s/%s' % (s3_client.meta.endpoint_url,bucket,key)
-    return s3_file_url
 
 ##### 검색, 업로드, 매칭 #####
 
@@ -110,6 +100,13 @@ def get_picture_detail_info(request):
         "label_list":label_list
     })
 
+    #presigned url 생성
+    bucket = ARTWORK_BUCKET_NAME
+    key = image_data["img_path"]
+    s3_url = s3connection.get_presigned_url(bucket,key)
+    #response 를 위한 img path 데이터 변경
+    image_data["img_path"]=s3_url
+
     data = {
             "result": "succ",
             "msg": "메세지",
@@ -142,7 +139,7 @@ def get_label_list(request):
 @api_view(["POST"])
 def set_user_image_upload(request):
     '''
-    사용자 로컬이미지 업로드 -> set into storage
+    사용자 로컬이미지 업로드 -> set into storage -> 로컬데이터 삭제
     '''
     # server time 
     tz = pytz.timezone('Asia/Seoul')
@@ -162,28 +159,38 @@ def set_user_image_upload(request):
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 추가
 
-    #save user upload image file into local MEDIA ROOT
-    filename = server_time + user_id + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
-    save_path = os.path.join(upload_file_path, filename)
-    default_storage.save(save_path, upload_files[0])
-    file_addr = settings.MEDIA_ROOT+save_path
-
-    #save user upload image file into aws s3
+    #파일 저장 
     try:
-        s3_file_url = upload_into_s3(file_addr,os.getenv("USER_BUCKET_NAME"),filename)
-    except:
-        raise DataBaseException #TODO: AWS S3 userupload exception 로 바꾸기
+        #백엔드에 사용자 업로드 이미지 저장
+        filename = server_time + user_id + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
+        save_path = os.path.join(upload_file_path, filename)
+        default_storage.save(save_path, upload_files[0])
+        file_addr = os.path.join(settings.MEDIA_ROOT,save_path)
 
-    #TB_UPLOAD_INFO 에 정보 저장
-    try:
-        TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=s3_file_url)
+        #백엔드에 저장된 파일을 aws s3 스토리지에 저장
+        bucket = USER_BUCKET_NAME
+        key = s3connection.upload_file_into_s3(file_addr,bucket,filename)
+        #접근 url 반환
+        if key:
+            s3_url = s3connection.get_presigned_url(bucket,key) 
+        else: 
+            raise DataBaseException      
+        #TB_UPLOAD_INFO 에 업로드 정보 저장
+        if s3_url:
+            #TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
+            TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=key) #key 저장
+        else:
+            DataBaseException
+
+        #TODO: 백엔드에서 삭제
+
     except: 
-       raise DataBaseException
+        raise DataBaseException
 
     data = {
             "result": "succ",
             "msg": "메세지",
-            "file_addr" : s3_file_url,
+            "file_addr" : s3_url,
             }
 
     return Response(data)
@@ -211,23 +218,28 @@ def exec_recommend(request):
         else:
             label_id_list.append(None)   
 
-    room_img_info = TbUploadInfo.objects.values("room_img") #user upload image path (backend)
-    room_img_path = room_img_info[0]["room_img"]
-    room_img_path = os.path.join(settings.MEDIA_ROOT,"sohee/101104index.jpeg") #temp path for debug - TODO: MUST delete below line after debug
+    room_img_key = TbUploadInfo.objects.filter(upload_id=upload_id).values("room_img")[0]["room_img"] #user upload image path (storage)
+    room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img_key)
+    #room_img_path = room_img_info[0]["room_img"]
 
     #load artwork data
     pic_data = TbArkworkInfo.objects.values('image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
 
     #exec recommend
-    #TODO: img path 만 넘겨주고 스토리지에서 이미지 가져오는건 matching.py 에서?
-    #TODO: 아니면 backend 에 저장해 놓고 일단 추천 돌린 후 -> matching.py(or 다른 service) 에서 스토리지에 저장 -> 새로운 storage room path 와 clt path 을 matching.py 로부터 return 받기?
-    getimgcolor = GetImageColor(room_img_path)
+    getimgcolor = GetImageColor(room_img_url)
     clt =  getimgcolor.get_meanshift() #room color clt with meanshift
-    clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path
+    clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
+    #save clustering result into s3 storage
+    clt_key = room_img_key
+    s3connection.upload_file_into_s3(clt_path,CLUSTER_BUCKET_NAME,clt_key)
+    clt_url = s3connection.get_presigned_url(CLUSTER_BUCKET_NAME,clt_key)
+
+    #TODO: 예외처리 추가
+    #TODO: clustering result 사진 삭제
 
     #선택된 label과 clustering 결과 이미지 path를 Tb_upload_info에 저장
     try:
-        TbUploadInfo.objects.filter(upload_id=upload_id).update(clustering_img=clt_path,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2],label4_id=label_id_list[3],label5_id=label_id_list[4])
+        TbUploadInfo.objects.filter(upload_id=upload_id).update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
     except:
         raise DataBaseException
 
@@ -241,8 +253,8 @@ def exec_recommend(request):
         'msg':'message',
         'recommend':{
             'upload_id':upload_id,
-            'room_img':room_img_path,
-            'clustering_result':clt_path,
+            'room_img':room_img_url,
+            'clustering_result':clt_url,
             'chosen_label':label_nm_list,
             'recommend_images':{
                 'analog':analog['img_path'],
@@ -318,16 +330,13 @@ def exec_purchase(request):
     if not company_id:
         raise DataBaseException #TODO: 제휴사 없음 팝업
     
-    # purchase_info table 에 새로운 row로 구매정보 저장
     try:
+        # purchase_info table 에 새로운 row로 구매정보 저장
         TbPurchaseInfo.objects.create(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000) #TODO : price 변경 (어떡할지?)
         purchase_item = TbPurchaseInfo.objects.filter(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000)
         purchase_id = purchase_item.values("purchase_id")[0]["purchase_id"] #TODO: 방금 생성한 item 의 pk 얻는법 이게 최선?
-    except:
-        raise DataBaseException
 
-    # matching 후 구매 시 TB_UPLOAD_INFO 에 purchase_id 저장
-    try:
+        # matching 후 구매 시 TB_UPLOAD_INFO 에 purchase_id 저장
         if room_img is not None:
             upload_info = TbUploadInfo.objects.get(user_id=user_id, room_img=room_img)
             upload_info.purchase_id = purchase_id
