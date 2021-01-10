@@ -57,6 +57,7 @@ def get_picture_filtered_result(request):
             label_query = label_query.union(TbArkworkInfo.objects.filter(label3_id=label_dict["label_id"]))
 
         #TODO: 어떤 기준으로 정렬해서 보여줄건지 (order_by 수정)
+        #TODO: 라벨이 많이 포함되어 있는 순으로 정렬?
         #TODO: 정렬 기준 받는 란? 00순으로 보기 이런거
         result_image_list = label_query.order_by("image_id").values("img_path","image_id")
 
