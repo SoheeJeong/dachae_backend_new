@@ -21,8 +21,10 @@ ARTWORK_LABEL_NUM = 3 #명화 1개당 라벨 개수
 #TODO: timezone error 수정
 #TODO: 필요한곳에 권한체크 추가
 
-# S3 client
 import boto3
+from boto3.s3.transfer import S3Transfer
+
+# S3 client
 AWS_S3_CREDS = {
     "aws_access_key_id": os.getenv("AWS_ACCESS_KEY"),
     "aws_secret_access_key":os.getenv("AWS_SECRET_KEY")
@@ -31,8 +33,14 @@ s3_client = boto3.client('s3',**AWS_S3_CREDS)
 
 @api_view(['GET'])
 def s3_test(request):
-    s3_client.download_file('dachaeartwork','Starry Night.jpg',os.path.join(settings.MEDIA_ROOT,'bucket/starry_night.jpg'))
+    s3_client.download_file(os.getenv("ARTWORK_BUCKET_NAME"),'Starry Night.jpg',os.path.join(settings.MEDIA_ROOT,'bucket/starry_night.jpg'))
     return Response({"result":"succ"})
+
+def upload_into_s3(filepath,bucket,key):
+    transfer = S3Transfer(s3_client)
+    transfer.upload_file(filepath,bucket,key)
+    s3_file_url = '%s/%s/%s' % (s3_client.meta.endpoint_url,bucket,key)
+    return s3_file_url
 
 ##### 검색, 업로드, 매칭 #####
 
@@ -52,13 +60,13 @@ def get_picture_filtered_result(request):
         first_label = label_list[0]["label_id"]
         label_query = TbArkworkInfo.objects.filter(label1_id=first_label,label2_id=first_label,label3_id=first_label) #label_query 초기화:None
         for label_dict in label_list: #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork 합집합
+            #TODO: artwork 별로 몇개의 라벨이 포함되어 있는지 count 정보 저장 필요. 이 기준으로 sorting 필요.
             label_query = label_query.union(TbArkworkInfo.objects.filter(label1_id=label_dict["label_id"]))
             label_query = label_query.union(TbArkworkInfo.objects.filter(label2_id=label_dict["label_id"]))
             label_query = label_query.union(TbArkworkInfo.objects.filter(label3_id=label_dict["label_id"]))
 
-        #TODO: 어떤 기준으로 정렬해서 보여줄건지 (order_by 수정)
-        #TODO: 라벨이 많이 포함되어 있는 순으로 정렬?
-        #TODO: 정렬 기준 받는 란? 00순으로 보기 이런거
+        #TODO: order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
+        #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
         result_image_list = label_query.order_by("image_id").values("img_path","image_id")
 
     data = {
@@ -154,22 +162,28 @@ def set_user_image_upload(request):
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 추가
 
-    #TODO: 스토리지에 저장?
-    filename = server_time + upload_files[0].name #저장할 파일명 지정
+    #save user upload image file into local MEDIA ROOT
+    filename = server_time + user_id + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
     save_path = os.path.join(upload_file_path, filename)
     default_storage.save(save_path, upload_files[0])
     file_addr = settings.MEDIA_ROOT+save_path
 
+    #save user upload image file into aws s3
+    try:
+        s3_file_url = upload_into_s3(file_addr,os.getenv("USER_BUCKET_NAME"),filename)
+    except:
+        raise DataBaseException #TODO: AWS S3 userupload exception 로 바꾸기
+
     #TB_UPLOAD_INFO 에 정보 저장
     try:
-        TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
+        TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=s3_file_url)
     except: 
        raise DataBaseException
 
     data = {
             "result": "succ",
             "msg": "메세지",
-            "file_addr" : file_addr,
+            "file_addr" : s3_file_url,
             }
 
     return Response(data)
