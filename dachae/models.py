@@ -26,7 +26,9 @@ class TbArkworkInfo(models.Model):
     h3 = models.PositiveIntegerField(blank=True, null=True)
     s3 = models.PositiveIntegerField(blank=True, null=True)
     v3 = models.PositiveIntegerField(blank=True, null=True)
-    label = models.ForeignKey('TbLabelInfo', models.DO_NOTHING)
+    label1_id = models.PositiveIntegerField(blank=True, null=True)
+    label2_id = models.PositiveIntegerField(blank=True, null=True)
+    label3_id = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -88,8 +90,6 @@ class TbUploadInfo(models.Model):
     label1_id = models.IntegerField(blank=True, null=True)
     label2_id = models.IntegerField(blank=True, null=True)
     label3_id = models.IntegerField(blank=True, null=True)
-    label4_id = models.IntegerField(blank=True, null=True)
-    label5_id = models.IntegerField(blank=True, null=True)
     img_id = models.CharField(max_length=45, blank=True, null=True)
     like = models.CharField(max_length=45, blank=True, null=True)
     purchase_id = models.IntegerField(blank=True, null=True)
