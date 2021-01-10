@@ -1,8 +1,9 @@
 import os
-# S3 client
 import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
+
+#TODO: expiration time 줄이기
 
 class S3Connection():
     def __init__(self):
@@ -12,7 +13,7 @@ class S3Connection():
             "config" : Config(signature_version='s3v4'),
             "region_name" : 'ap-northeast-2'
         }
-
+        # S3 client
         self.s3_client = boto3.client('s3',**AWS_S3_CREDS)
 
     def get_presigned_url(self,bucket,key,expiration=3600):
