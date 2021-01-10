@@ -46,6 +46,7 @@ def get_best_image_list(request):
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
+    #TODO: best image list table 로 바꾸기
     best_image_list = TbArkworkInfo.objects.values("img_path","image_id")
     end = len(best_image_list) if not end else int(end)
 
