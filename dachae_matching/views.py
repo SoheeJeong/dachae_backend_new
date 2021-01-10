@@ -4,13 +4,15 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
+# from django.utils import timezone
 
 import os
+import shutil
 import requests
 import sys
 import json
 import pytz
-from datetime import datetime,timezone
+from datetime import datetime,timezone,timedelta
 
 from .matching import GetImageColor, Recommendation
 from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo
@@ -28,9 +30,7 @@ USER_BUCKET_NAME = os.getenv("USER_BUCKET_NAME")
 CLUSTER_BUCKET_NAME = os.getenv("CLUSTER_BUCKET_NAME")
 
 #TODO: 세부 기능들을 별개의 service로 쪼개서 refactoring 필요 (일단 쭉 구현하고나서)
-#TODO: timezone error 수정
 #TODO: 필요한곳에 권한체크 추가
-
 
 ##### 검색, 업로드, 매칭 #####
 
@@ -41,23 +41,26 @@ def get_picture_filtered_result(request):
     키워드 및 느낌라벨로 명화 검색
     '''
     body = json.loads(request.body.decode("utf-8"))
-    label_list = body["label_list"] #label_list 에 포함된 라벨 합집합 or 교집합? 교집합이 나을듯 ㅇㅇ 합집합이면 라벨 선택 해제하면 되니까
+    label_list = body["label_list"]
 
     if len(label_list)==0:
         result_image_list = TbArkworkInfo.objects.values("img_path","image_id")
     else:
-        #TODO: 검색, filter 기준 정립 필요
+        #TODO: filter 기준 정립 필요
+        #label_query 초기화:None
         first_label = label_list[0]["label_id"]
-        label_query = TbArkworkInfo.objects.filter(label1_id=first_label,label2_id=first_label,label3_id=first_label) #label_query 초기화:None
-        for label_dict in label_list: #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork 합집합
+        label_query = TbArkworkInfo.objects.filter(label1_id=first_label,label2_id=first_label,label3_id=first_label) 
+        #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork object들의 합집합
+        for label_dict in label_list: 
             #TODO: artwork 별로 몇개의 라벨이 포함되어 있는지 count 정보 저장 필요. 이 기준으로 sorting 필요.
             label_query = label_query.union(TbArkworkInfo.objects.filter(label1_id=label_dict["label_id"]))
             label_query = label_query.union(TbArkworkInfo.objects.filter(label2_id=label_dict["label_id"]))
             label_query = label_query.union(TbArkworkInfo.objects.filter(label3_id=label_dict["label_id"]))
 
         #TODO: order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
-        #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
         result_image_list = label_query.order_by("image_id").values("img_path","image_id")
+
+        #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
 
     data = {
         "result": "succ",
@@ -75,8 +78,7 @@ def get_picture_detail_info(request):
     if not img_id:
         raise DataBaseException
 
-    image_info = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price","label1_id","label2_id","label3_id")#,"label4_id","label5_id")
-    image_data = image_info[0] #unique item
+    image_data = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price","label1_id","label2_id","label3_id")[0] #,"label4_id","label5_id")
     company_nm = TbCompanyInfo.objects.filter(company_id=image_data["company_id"]).values("company_nm")
     
     del image_data["company_id"]
@@ -104,6 +106,7 @@ def get_picture_detail_info(request):
     bucket = ARTWORK_BUCKET_NAME
     key = image_data["img_path"]
     s3_url = s3connection.get_presigned_url(bucket,key)
+
     #response 를 위한 img path 데이터 변경
     image_data["img_path"]=s3_url
 
@@ -142,15 +145,15 @@ def set_user_image_upload(request):
     사용자 로컬이미지 업로드 -> set into storage -> 로컬데이터 삭제
     '''
     # server time 
-    tz = pytz.timezone('Asia/Seoul')
-    server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     user_id = request.POST.get("user_id", None) 
     upload_files = request.FILES.getlist('file')
-    upload_file_path = os.path.join(user_id)
 
-    if not upload_files: #업로드된 파일이 없을 경우
-        raise DataBaseException #TODO : 업로드된 파일이 없습니다 exception 추가
+    #업로드된 파일이 없을 경우
+    if not upload_files: 
+        raise DataBaseException #TODO : 파일을 업로드해주세요 없습니다 exception 추가
+    #업로드된 파일이 1개보다 많은 경우
     if len(upload_files)>1:
         raise DataBaseException #TODO : 파일을 1장만 업로드해주세요 exception 추가
     
@@ -163,7 +166,7 @@ def set_user_image_upload(request):
     try:
         #백엔드에 사용자 업로드 이미지 저장
         filename = server_time + user_id + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
-        save_path = os.path.join(upload_file_path, filename)
+        save_path = os.path.join(user_id, filename)
         default_storage.save(save_path, upload_files[0])
         file_addr = os.path.join(settings.MEDIA_ROOT,save_path)
 
@@ -178,11 +181,13 @@ def set_user_image_upload(request):
         #TB_UPLOAD_INFO 에 업로드 정보 저장
         if s3_url:
             #TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
-            TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=key) #key 저장
+            TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=key) #key를 저장
         else:
             DataBaseException
 
-        #TODO: 백엔드에서 삭제
+        #백엔드에서 삭제
+        shutil.rmtree(os.path.join(settings.MEDIA_ROOT,user_id)) #user folder 전체를 삭제
+        #default_storage.delete(upload_file_path) #업로드 file만 삭제
 
     except: 
         raise DataBaseException
@@ -218,9 +223,8 @@ def exec_recommend(request):
         else:
             label_id_list.append(None)   
 
-    room_img_key = TbUploadInfo.objects.filter(upload_id=upload_id).values("room_img")[0]["room_img"] #user upload image path (storage)
+    room_img_key = TbUploadInfo.objects.filter(upload_id=upload_id).values("room_img")[0]["room_img"] #user upload image key (storage)
     room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img_key)
-    #room_img_path = room_img_info[0]["room_img"]
 
     #load artwork data
     pic_data = TbArkworkInfo.objects.values('image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
@@ -229,6 +233,7 @@ def exec_recommend(request):
     getimgcolor = GetImageColor(room_img_url)
     clt =  getimgcolor.get_meanshift() #room color clt with meanshift
     clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
+
     #save clustering result into s3 storage
     clt_key = room_img_key
     s3connection.upload_file_into_s3(clt_path,CLUSTER_BUCKET_NAME,clt_key)
@@ -271,8 +276,8 @@ def exec_recommend(request):
 @api_view(["GET"])
 def set_wish_list(request):
     # server time 
-    tz = pytz.timezone('Asia/Seoul')
-    server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    # tz = timezone(timedelta(hours=9))
+    server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     user_id = request.GET.get("user_id",None)
     img_id = request.GET.get("img_id",None)
@@ -284,6 +289,8 @@ def set_wish_list(request):
         wishlist = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
         if len(wishlist)==0: #존재하지 않는 row -> 새로 table에 삽입
             TbWishlistInfo.objects.create(user_id=user_id,image_id=img_id,server_time=server_time)
+        else: 
+            raise DataBaseException #TODO: 이미 위시리스트에 추가되어 있다로 변경
     except: 
        raise DataBaseException
 
@@ -315,8 +322,7 @@ def del_wish_list(request,user_id,img_id):
 @api_view(["GET"])
 def exec_purchase(request):
     # server time 
-    tz = pytz.timezone('Asia/Seoul')
-    server_time = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+    server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # get params
     user_id = request.GET.get("user_id",None)
