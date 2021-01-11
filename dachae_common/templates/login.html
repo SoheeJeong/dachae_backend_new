@@ -1,0 +1,22 @@
+{%load socialaccount%}
+{%providers_media_js%}
+
+<h1>SOCIAL LOGIN</h1>
+<a href="/accounts/signup">회원가입</a>
+<br>
+
+{%if user.is_authenticated%}
+<a href="/accounts/logout">로그아웃</a>
+<br>
+{{user.username}}님이 로그인 중
+
+
+{%else%}
+<!-- receiving from django-allauth -->    
+<a href="{% provider_login_url 'naver' %}">네이버로 계속하기</a>
+<br>
+<!-- receiving from users/urls.py -->    
+{%csrf_token%}
+<a href="https://kauth.kakao.com/oauth/authorize?client_id={{login_data.REST_API_KEY}}&redirect_uri={{login_data.REDIRECT_URI}}&response_type=code">카카오 로그인</a>
+<a href="https://kauth.kakao.com/oauth/logout?client_id={{logout_data.REST_API_KEY}}&logout_redirect_uri={{logout_data.LOGOUT_REDIRECT_URI}}">카카오 로그아웃</a>
+{%endif%}

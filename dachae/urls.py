@@ -8,6 +8,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
 import dachae_common.urls
+import dachae_common.views
 import dachae_matching.urls
 
 schema_view = get_schema_view(
@@ -25,9 +26,11 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('',dachae_common.views.KakaoLoginView.as_view(),name='kakaologin'),
+    path('login/',dachae_common.views.kakao_login_page,name='login'), #frontend 로그인 버튼 임시 구현
     path('accounts/',include('allauth.urls')),
     path('swagger/',schema_view.with_ui(cache_timeout=0),name='swagger'),
-    path('dachae/common/',include(dachae_common.urls,namespace='common')),
+    path('dachae/',include(dachae_common.urls,namespace='common')),
     path('dachae/matching/',include(dachae_matching.urls,namespace='macthing'))
 ]
 
