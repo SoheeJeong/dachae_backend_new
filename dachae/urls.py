@@ -25,6 +25,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('accounts/',include('allauth.urls')),
     path('swagger/',schema_view.with_ui(cache_timeout=0),name='swagger'),
     path('dachae/common/',include(dachae_common.urls,namespace='common')),
     path('dachae/matching/',include(dachae_matching.urls,namespace='macthing'))
