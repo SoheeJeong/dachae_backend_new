@@ -33,7 +33,7 @@ class S3Connection():
                     'Bucket': bucket,
                     'Key': key
                 },
-                ExpiresIn=expiration #expiration sec 이후에 만료
+                ExpiresIn=expiration, #expiration sec 이후에 만료
             )
         except:
             return None

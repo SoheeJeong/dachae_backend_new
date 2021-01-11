@@ -13,12 +13,15 @@ import requests
 import urllib
 from datetime import datetime
 
-from dachae.models import TbArkworkInfo,TbUserInfo,TbUserLog  #TODO TbArtworkInfo 를 샘플사진리스트 테이블로 바꾸기
+from dachae.models import TbUserInfo,TbUserLog 
 from dachae.exceptions import DataBaseException
 from dachae.utils import age_range_calulator
 
-#TODO: timezone error 수정
+
+
 #TODO: 필요한곳에 권한체크 추가
+#TODO: refresh token, delete token, naver logout
+#TODO: 카카오톡 메시지 연동 (FAQ 대신, 문의하기)
 
 @api_view(["POST"])
 def set_signup(request):
@@ -31,8 +34,7 @@ def set_signup(request):
     social_platform = body["social_platform"]
     user_nm = body["user_nm"]
     birthday_date = body["birthday_date"] #TODO: frontend에서 입력형식 체크
-    rgst_date = body["rgst_date"]
-    email = body["rgst_date"]
+    email = body["email"]
     gender = body["gender"]
 
     age_range = age_range_calulator(birthday_date)
@@ -47,8 +49,8 @@ def set_signup(request):
         email = email,
         gender = gender,
         age_range = age_range,
-        rgst_date = rgst_date,
-        level = "free", #default free #TODO: 유료회원 받는 란? -> 추후 추가
+        rgst_date = datetime.now(),
+        level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
         role = "member"
     ).save()
 
@@ -58,8 +60,7 @@ def set_signup(request):
     }
     return Response(response)
 
-
-#frontend 역할
+#frontend 역할 #TODO: 함수 제거
 @csrf_exempt
 def login_page(request):
     naver_login_data = {
@@ -79,7 +80,7 @@ def login_page(request):
 
 class KakaoLoginView(View):
     def get(self,request):
-        ###frontend 역할
+        ###frontend 역할 -> TODO: 코드 제거
         #1. 인증 코드 요청 (from frontend)
         kakao_access_code = request.GET.get('code',None)
         #2. access token 요청
@@ -107,7 +108,6 @@ class KakaoLoginView(View):
         kakao_response = requests.post(url,headers=headers,data=body)
         kakao_user_info_response = json.loads(kakao_response.text)
 
-        #TODO: signup 으로 redirect 여부 검사 - 우리 db에 있는 유저인가? id 검사
         #이미 존재하는 회원이면 - 로그인 실행
         if TbUserInfo.objects.filter(social_platform="kakao",user_id=kakao_user_info_response["id"]).exists():
             user = TbUserInfo.objects.get(user_id=kakao_user_info_response['id'])
@@ -122,9 +122,8 @@ class KakaoLoginView(View):
                 'level' : user.level, #default free #TODO: 유료회원 받는 란? -> 추후 추가
                 'role' : user.role,
             }
-
             return JsonResponse(user_data)
-        
+        #새로운 회원이면 - registered = 0 으로 세팅 (바로 회원가입 페이지로)
         else:
             jwt_token = jwt.encode({'id':kakao_user_info_response["id"]},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
             user_data = {
@@ -170,26 +169,9 @@ def set_signout(request):
     '''
     로그아웃
     '''
+    # kakao logout
+    # "https://kauth.kakao.com/oauth/logout?client_id={{logout_data.REST_API_KEY}}&logout_redirect_uri={{logout_data.LOGOUT_REDIRECT_URI}}"
+    
     data = {"data":"temp"}
     return Response(data)
 
-@api_view(["GET"])
-def get_best_image_list(request):
-    '''
-    메인화면에서 샘플사진 리스트 로드
-    param example) start=0&end=2 이면 index 0,1,2 사진 로드 (1,2,3 번째 사진 로드)
-    '''
-    start = request.GET.get("start",0)  
-    end = request.GET.get("end",None)  
-
-    #TODO: best image list table 로 바꾸기
-    best_image_list = TbArkworkInfo.objects.values("img_path","image_id")
-    end = len(best_image_list) if not end else int(end)
-
-    data_list = best_image_list[int(start):end+1]
-    data = {
-            "result": "succ",
-            "msg": "메세지",
-            "data" : data_list,
-            }
-    return Response(data)
