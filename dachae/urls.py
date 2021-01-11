@@ -26,8 +26,9 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('',dachae_common.views.KakaoLoginView.as_view(),name='kakaologin'),
-    path('login/',dachae_common.views.kakao_login_page,name='login'), #frontend 로그인 버튼 임시 구현
+    path('kakao/',dachae_common.views.KakaoLoginView.as_view(),name='kakaologin'),
+    path('naver/',dachae_common.views.NaverLoginView.as_view(),name='naverlogin'),
+    path('login/',dachae_common.views.login_page,name='login'), #frontend 로그인 버튼 임시 구현
     path('accounts/',include('allauth.urls')),
     path('swagger/',schema_view.with_ui(cache_timeout=0),name='swagger'),
     path('dachae/',include(dachae_common.urls,namespace='common')),
