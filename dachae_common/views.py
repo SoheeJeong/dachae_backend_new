@@ -10,26 +10,72 @@ import os
 import json
 import jwt #json web tokens
 import requests
+import urllib
 from datetime import datetime
 
 from dachae.models import TbArkworkInfo,TbUserInfo,TbUserLog  #TODO TbArtworkInfo 를 샘플사진리스트 테이블로 바꾸기
 from dachae.exceptions import DataBaseException
+from dachae.utils import age_range_calulator
 
 #TODO: timezone error 수정
 #TODO: 필요한곳에 권한체크 추가
 
+@api_view(["POST"])
+def set_signup(request):
+    '''
+    새로운 회원 회원가입 실행
+    소셜로그인에서 넘어온 회원가입 페이지
+    '''
+    body = json.loads(request.body.decode("utf-8"))
+    user_id = body["user_id"]
+    social_platform = body["social_platform"]
+    user_nm = body["user_nm"]
+    birthday_date = body["birthday_date"] #TODO: frontend에서 입력형식 체크
+    rgst_date = body["rgst_date"]
+    email = body["rgst_date"]
+    gender = body["gender"]
+
+    age_range = age_range_calulator(birthday_date)
+
+    #TODO: param missing exception error 추가
+    #insert into user DB
+    TbUserInfo(
+        user_id = user_id,
+        social_platform = social_platform,
+        user_nm = user_nm,
+        birthday_date = birthday_date,
+        email = email,
+        gender = gender,
+        age_range = age_range,
+        rgst_date = rgst_date,
+        level = "free", #default free #TODO: 유료회원 받는 란? -> 추후 추가
+        role = "member"
+    ).save()
+
+    response = {
+        "result": "succ",
+        "msg": "메세지"
+    }
+    return Response(response)
+
+
 #frontend 역할
 @csrf_exempt
-def kakao_login_page(request):
+def login_page(request):
+    naver_login_data = {
+        "CLIENT_ID": (os.getenv("NAVER_APP_KEY")),
+        "REDIRECT_URI": (os.getenv("NAVER_LOGIN_REDIRECT_URI")),
+        "STATE":os.getenv("NAVER_API_SECRET"),
+    }
     kakao_login_data = {
         "REST_API_KEY":os.getenv("KAKAO_APP_KEY"),
-        "REDIRECT_URI":os.getenv("LOGIN_REDIRECT_URI"),
+        "REDIRECT_URI":os.getenv("KAKAO_LOGIN_REDIRECT_URI"),
     }
     kakao_logout_data = {
         "REST_API_KEY":os.getenv("KAKAO_APP_KEY"),
         "LOGOUT_REDIRECT_URI":os.getenv("LOGOUT_REDIRECT_URI"),
     }
-    return render(request,'login.html',{'login_data':kakao_login_data,'logout_data':kakao_logout_data})
+    return render(request,'login.html',{'login_data':kakao_login_data,'logout_data':kakao_logout_data,"naver_login_data":naver_login_data})
 
 class KakaoLoginView(View):
     def get(self,request):
@@ -56,47 +102,58 @@ class KakaoLoginView(View):
             'Content-type':'application/x-www-form-urlencoded;charset=utf-8',
         }
         body = {
-            'property_keys':'["properties.nickname","properties.profile_image","properties.thumbnail_image","kakao_account.email","kakao_account.age_range","kakao_account.birthday","kakao_account.gender"]'
+            #'property_keys':'["properties.nickname","properties.profile_image","properties.thumbnail_image"]'
         }
         kakao_response = requests.post(url,headers=headers,data=body)
         kakao_user_info_response = json.loads(kakao_response.text)
 
         #TODO: signup 으로 redirect 여부 검사 - 우리 db에 있는 유저인가? id 검사
         #이미 존재하는 회원이면 - 로그인 실행
-        if TbUserInfo.objects.filter(social_platform="kakao",social_id=kakao_user_info_response["id"]).exists():
-            user = TbUserInfo.objects.get(social_id=kakao_user_info_response['id'])
+        if TbUserInfo.objects.filter(social_platform="kakao",user_id=kakao_user_info_response["id"]).exists():
+            user = TbUserInfo.objects.get(user_id=kakao_user_info_response['id'])
             jwt_token = jwt.encode({'id':user.user_id},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
-            #TODO: 권한정보, 프로필경로 등 넘겨주기
-            return HttpResponse(f'id:{user.user_id},nickname:{user.user_nick},token:{jwt_token}')
-        
-        #새로운 회원 - 회원가입 실행ddd
-        #TODO: insert into user DB
-        TbUserInfo(
-            user_id = kakao_user_info_response["id"],#TODO: 바꾸기 or social_id 와 합치기
-            social_platform = "kakao",
-            social_id = kakao_user_info_response["id"],
-            user_nm = kakao_user_info_response["properties"]["nickname"],#TODO: 바꾸기 or user_nick 과 합치기
-            user_nick = kakao_user_info_response["properties"]["nickname"],
-            birthday_date = kakao_user_info_response["kakao_account"]["birthday"],
-            birthday_type = kakao_user_info_response["kakao_account"]["birthday_type"],
-            email = kakao_user_info_response["kakao_account"]["email"],
-            gender = kakao_user_info_response["kakao_account"]["gender"],
-            age_range = kakao_user_info_response["kakao_account"]["age_range"],
-            rgst_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            state = "삭제될 attribute",
-            level = "free", #default free #TODO: 유료회원 받는 란? -> 추후 추가
-            role = "member"
-        ).save()
-        return HttpResponse(f'{kakao_response.text}')
+            #권한정보, 사용자정보 넘겨주기
+            user_data = {
+                'registered':1, #이미 회원가입된 사용자 -> 추가 회원가입 페이지 불필요, 메인페이지로 redirect
+                'token':jwt_token,
+                'user_id': user.user_id,
+                'social_platform':user.social_platform,
+                'user_nm' : user.user_nm,
+                'level' : user.level, #default free #TODO: 유료회원 받는 란? -> 추후 추가
+                'role' : user.role,
+            }
 
-@csrf_exempt
-@api_view(["POST"])
-def set_signup(request):
-    '''
-    회원가입
-    '''
-    data = {"data":"temp"}
-    return Response(data)
+            return JsonResponse(user_data)
+        
+        else:
+            jwt_token = jwt.encode({'id':kakao_user_info_response["id"]},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
+            user_data = {
+                'registered':0,
+                'token':jwt_token,
+                'user_id':kakao_user_info_response['id'],
+                'social_platform':'kakao',
+            }
+            return JsonResponse(user_data)
+
+class NaverLoginView(View):
+    def get(self,request):
+        #frontend - for test
+        naver_access_code = request.GET.get('code',None)
+        return HttpResponse(f'{naver_access_code}')
+        #backend
+        # token = "YOUR_ACCESS_TOKEN"
+        # header = "Bearer " + token # Bearer 다음에 공백 추가
+        # url = "https://openapi.naver.com/v1/nid/me"
+        # request = urllib.request.Request(url)
+        # request.add_header("Authorization", header)
+        # response = urllib.request.urlopen(request)
+        # rescode = response.getcode()
+        # if(rescode==200):
+        #     response_body = response.read()
+        #     print(response_body.decode('utf-8'))
+        # else:
+        #     print("Error Code:" + rescode)
+
 
 @csrf_exempt
 @api_view(["POST"])

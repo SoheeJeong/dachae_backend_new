@@ -2,6 +2,7 @@ import os
 import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
+from datetime import date
 
 #TODO: expiration time 줄이기
 
@@ -53,3 +54,37 @@ class S3Connection():
         #     except:
         #         return None
         #     return savepath
+
+def age_range_calulator(birthday_date):
+    todays_date = date.today()
+    
+    birthday_split_list = birthday_date.split("-")
+    born_year = int(birthday_split_list[0])
+    born_month = int(birthday_split_list[1])
+    born_day = int(birthday_split_list[2])
+
+    age = todays_date.year - born_year - ((todays_date.month, todays_date.day) < (born_month, born_day))
+    if age < 10:
+        age_range = "10세 이하"
+    elif age < 20:
+        age_range = "10-19"
+    elif age < 30:
+        age_range = "20-29"
+    elif age < 40:
+        age_range = "30-39"
+    elif age < 50:
+        age_range = "40-49"
+    elif age < 60:
+        age_range = "50-59"
+    elif age < 70:
+        age_range = "60-69"
+    elif age < 80:
+        age_range = "70-79"
+    elif age < 90:
+        age_range = "80-89"
+    elif age < 100:
+        age_range = "90-99"
+    else:
+        age_range = "100세 이상"
+
+    return age_range

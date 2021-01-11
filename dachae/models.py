@@ -102,16 +102,12 @@ class TbUploadInfo(models.Model):
 class TbUserInfo(models.Model):
     user_id = models.CharField(primary_key=True, max_length=50)
     social_platform = models.CharField(max_length=50, blank=True, null=True)
-    social_id = models.PositiveIntegerField(blank=True, null=True)
     user_nm = models.CharField(max_length=50)
-    user_nick = models.CharField(max_length=50, blank=True, null=True)
     birthday_date = models.CharField(max_length=50, blank=True, null=True)
-    birthday_type = models.CharField(max_length=50, blank=True, null=True)
     email = models.CharField(max_length=50, blank=True, null=True)
     gender = models.CharField(max_length=50, blank=True, null=True)
     age_range = models.CharField(max_length=50, blank=True, null=True)
     rgst_date = models.DateTimeField()
-    state = models.CharField(max_length=50, blank=True, null=True)
     level = models.CharField(max_length=50, blank=True, null=True)
     role = models.CharField(max_length=50, blank=True, null=True)
 
