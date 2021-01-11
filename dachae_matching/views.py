@@ -13,7 +13,7 @@ import json
 from datetime import datetime
 
 from .matching import GetImageColor, Recommendation
-from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo
+from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo,TbSampleList
 from dachae.exceptions import DataBaseException #TODO: add exceptions
 
 from dachae.utils import S3Connection
@@ -26,12 +26,38 @@ ARTWORK_LABEL_NUM = 3 #명화 1개당 라벨 개수
 ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
 USER_BUCKET_NAME = os.getenv("USER_BUCKET_NAME")
 CLUSTER_BUCKET_NAME = os.getenv("CLUSTER_BUCKET_NAME")
+SAMPLE_BUCKET_NAME = os.getenv("SAMPLE_BUCKET_NAME")
 
 #TODO: 세부 기능들을 별개의 service로 쪼개서 refactoring 필요 (일단 쭉 구현하고나서)
 #TODO: 필요한곳에 권한체크 추가
 #TODO: 예외처리 체크
 
 ##### 검색, 업로드, 매칭 #####
+@api_view(["GET"])
+def get_best_image_list(request):
+    '''
+    메인화면에서 샘플사진 리스트 로드
+    param example) start=0&end=2 이면 index 0,1,2 사진 로드 (1,2,3 번째 사진 로드)
+    '''
+    start = request.GET.get("start",0)  
+    end = request.GET.get("end",None)  
+
+    #TODO: best image list table 로 바꾸기
+    best_image_list = TbSampleList.objects.values("sample_path","sample_id","artwork_id")
+    end = len(best_image_list) if not end else int(end)
+    data_list = best_image_list[int(start):end+1]
+    #s3 path 로 바꾸기
+    for i in range(len(data_list)):
+        img_key = data_list[i]["sample_path"]
+        print(img_key)
+        data_list[i]["sample_path"] = s3connection.get_presigned_url(SAMPLE_BUCKET_NAME,img_key)
+
+    data = {
+            "result": "succ",
+            "msg": "메세지",
+            "data" : data_list,
+            }
+    return Response(data)
 
 @csrf_exempt
 @api_view(["POST"])
@@ -58,6 +84,11 @@ def get_picture_filtered_result(request):
 
         #TODO: order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
         result_image_list = label_query.order_by("image_id").values("img_path","image_id")
+        
+        #s3 파일 경로 얻기
+        for i in range(len(result_image_list)):
+            img_key = result_image_list[i]["img_path"] #get key
+            result_image_list[i]["img_path"] = s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
 
         #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
 
