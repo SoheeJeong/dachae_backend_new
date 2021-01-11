@@ -101,16 +101,19 @@ class TbUploadInfo(models.Model):
 
 class TbUserInfo(models.Model):
     user_id = models.CharField(primary_key=True, max_length=50)
+    social_platform = models.CharField(max_length=50, blank=True, null=True)
+    social_id = models.PositiveIntegerField(blank=True, null=True)
     user_nm = models.CharField(max_length=50)
     user_nick = models.CharField(max_length=50, blank=True, null=True)
-    user_pw = models.CharField(max_length=50)
-    birthday_date = models.DateField()
-    email = models.CharField(max_length=50)
-    gender = models.CharField(max_length=50)
-    rgst_date = models.DateField()
+    birthday_date = models.CharField(max_length=50, blank=True, null=True)
+    birthday_type = models.CharField(max_length=50, blank=True, null=True)
+    email = models.CharField(max_length=50, blank=True, null=True)
+    gender = models.CharField(max_length=50, blank=True, null=True)
+    age_range = models.CharField(max_length=50, blank=True, null=True)
+    rgst_date = models.DateTimeField()
     state = models.CharField(max_length=50, blank=True, null=True)
-    level = models.CharField(max_length=50)
-    role = models.CharField(max_length=50)
+    level = models.CharField(max_length=50, blank=True, null=True)
+    role = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -139,6 +142,28 @@ class TbWishlistInfo(models.Model):
     class Meta:
         managed = False
         db_table = 'TB_WISHLIST_INFO'
+
+
+class AccountEmailaddress(models.Model):
+    email = models.CharField(unique=True, max_length=254)
+    verified = models.IntegerField()
+    primary = models.IntegerField()
+    user = models.ForeignKey('AuthUser', models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'account_emailaddress'
+
+
+class AccountEmailconfirmation(models.Model):
+    created = models.DateTimeField()
+    sent = models.DateTimeField(blank=True, null=True)
+    key = models.CharField(unique=True, max_length=64)
+    email_address = models.ForeignKey(AccountEmailaddress, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'account_emailconfirmation'
 
 
 class AuthGroup(models.Model):
@@ -249,3 +274,61 @@ class DjangoSession(models.Model):
     class Meta:
         managed = False
         db_table = 'django_session'
+
+
+class DjangoSite(models.Model):
+    domain = models.CharField(unique=True, max_length=100)
+    name = models.CharField(max_length=50)
+
+    class Meta:
+        managed = False
+        db_table = 'django_site'
+
+
+class SocialaccountSocialaccount(models.Model):
+    provider = models.CharField(max_length=30)
+    uid = models.CharField(max_length=191)
+    last_login = models.DateTimeField()
+    date_joined = models.DateTimeField()
+    extra_data = models.TextField()
+    user = models.ForeignKey(AuthUser, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'socialaccount_socialaccount'
+        unique_together = (('provider', 'uid'),)
+
+
+class SocialaccountSocialapp(models.Model):
+    provider = models.CharField(max_length=30)
+    name = models.CharField(max_length=40)
+    client_id = models.CharField(max_length=191)
+    secret = models.CharField(max_length=191)
+    key = models.CharField(max_length=191)
+
+    class Meta:
+        managed = False
+        db_table = 'socialaccount_socialapp'
+
+
+class SocialaccountSocialappSites(models.Model):
+    socialapp = models.ForeignKey(SocialaccountSocialapp, models.DO_NOTHING)
+    site = models.ForeignKey(DjangoSite, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'socialaccount_socialapp_sites'
+        unique_together = (('socialapp', 'site'),)
+
+
+class SocialaccountSocialtoken(models.Model):
+    token = models.TextField()
+    token_secret = models.TextField()
+    expires_at = models.DateTimeField(blank=True, null=True)
+    account = models.ForeignKey(SocialaccountSocialaccount, models.DO_NOTHING)
+    app = models.ForeignKey(SocialaccountSocialapp, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'socialaccount_socialtoken'
+        unique_together = (('app', 'account'),)
