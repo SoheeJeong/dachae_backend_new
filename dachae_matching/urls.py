@@ -10,6 +10,6 @@ urlpatterns = [
     path('setUserImageUpload/', views.set_user_image_upload, name='setUserImageUpload'),
     path('execRecommend/', views.exec_recommend, name='execRecommend'),
     path('setWishList/', views.set_wish_list, name='setWishList'),
-    path('delWishList/<str:user_id>/<int:img_id>/', views.del_wish_list, name='delWishList'),
+    path('delWishList/', views.del_wish_list, name='delWishList'),
     path('execPurchase/', views.exec_purchase, name='execPurchase'),
 ]

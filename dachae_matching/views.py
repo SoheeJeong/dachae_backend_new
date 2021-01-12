@@ -14,7 +14,7 @@ from datetime import datetime
 
 from .matching import GetImageColor, Recommendation
 from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo,TbSampleList
-from dachae.exceptions import DataBaseException #TODO: add exceptions
+from dachae import exceptions
 
 from dachae.utils import S3Connection
 
@@ -28,8 +28,8 @@ USER_BUCKET_NAME = os.getenv("USER_BUCKET_NAME")
 CLUSTER_BUCKET_NAME = os.getenv("CLUSTER_BUCKET_NAME")
 SAMPLE_BUCKET_NAME = os.getenv("SAMPLE_BUCKET_NAME")
 
-#TODO: 세부 기능들을 별개의 service로 쪼개서 refactoring 필요 (일단 쭉 구현하고나서)
-#TODO: 필요한곳에 권한체크 추가
+#TODO: service 구조로 refactoring
+#TODO: 필요한곳에 권한체크 추가 - 찜, 구매
 #TODO: 예외처리 체크
 
 ##### 검색, 업로드, 매칭 #####
@@ -106,7 +106,7 @@ def get_picture_detail_info(request):
     '''
     img_id = request.GET.get("img_id",None)  
     if not img_id:
-        raise DataBaseException
+        raise exceptions.ParameterMissingException
 
     image_data = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price","label1_id","label2_id","label3_id")[0] #,"label4_id","label5_id")
     company_nm = TbCompanyInfo.objects.filter(company_id=image_data["company_id"]).values("company_nm")
@@ -126,7 +126,7 @@ def get_picture_detail_info(request):
                 label_nm = TbLabelInfo.objects.filter(label_id=label_id).values("label_nm")[0]
                 label_list.append(label_nm["label_nm"])
             except:
-                raise DataBaseException
+                raise exceptions.DataBaseException
 
     image_data.update({
         "label_list":label_list
@@ -182,15 +182,15 @@ def set_user_image_upload(request):
 
     #업로드된 파일이 없을 경우
     if not upload_files: 
-        raise DataBaseException #TODO : 파일을 업로드해주세요 없습니다 exception 추가
+        raise exceptions.NoFileUploadedException
     #업로드된 파일이 1개보다 많은 경우
     if len(upload_files)>1:
-        raise DataBaseException #TODO : 파일을 1장만 업로드해주세요 exception 추가
+        raise exceptions.TooManyFileUploadedException
     
     #파일 확장자 검사
     filename = upload_files[0].name.split('.')
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
-        raise DataBaseException #TODO : 허용되는 파일 형식이 아닙니다 exception 추가
+        raise exceptions.WrongFileFormatException
 
     #파일 저장 
     try:
@@ -207,20 +207,20 @@ def set_user_image_upload(request):
         if key:
             s3_url = s3connection.get_presigned_url(bucket,key) 
         else: 
-            raise DataBaseException      
+            raise exceptions.StorageConnectionException      
         #TB_UPLOAD_INFO 에 업로드 정보 저장
         if s3_url:
             #TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
             TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=key) #key를 저장
         else:
-            DataBaseException
+            exceptions.DataBaseException
 
         #백엔드에서 삭제
         shutil.rmtree(os.path.join(settings.MEDIA_ROOT,user_id)) #user folder 전체를 삭제
         #default_storage.delete(upload_file_path) #업로드 file만 삭제
 
     except: 
-        raise DataBaseException
+        raise exceptions.DataBaseException
 
     data = {
             "result": "succ",
@@ -239,11 +239,11 @@ def exec_recommend(request):
     body = json.loads(request.body.decode("utf-8"))
     upload_id = None if not body["upload_id"] else body["upload_id"]
     if not upload_id:
-        raise DataBaseException #TODO: no parameter exception 으로 바꾸기
+        raise exceptions.ParameterMissingException
 
     label_list = body["label_list"]
     if len(label_list) > MAX_LABEL_NUM:
-        raise DataBaseException #TODO: 라벨 개수가 너무 많습니다 exception -> 팝업 띄우기
+        raise exceptions.TooMuchLabelSeletedException
 
     label_nm_list, label_id_list = [],[]
     for i in range(MAX_LABEL_NUM):
@@ -277,7 +277,7 @@ def exec_recommend(request):
     try:
         TbUploadInfo.objects.filter(upload_id=upload_id).update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
     except:
-        raise DataBaseException
+        raise exceptions.DataBaseException
 
     analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
     
@@ -304,47 +304,66 @@ def exec_recommend(request):
 
 ##### 찜, 구매 #####
 
-@api_view(["GET"])
+@csrf_exempt
+@api_view(["POST"])
 def set_wish_list(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    body = json.loads(request.body.decode("utf-8"))
+    user_id = body["user_id"]
+    img_id = body["img_id"]
+
+    #TODO: valid user 인지 token 검사-토큰 만료 검사
     
-    user_id = request.GET.get("user_id",None)
-    img_id = request.GET.get("img_id",None)
     if not user_id or not img_id:
-        raise DataBaseException #TODO: no parameter error 로 변경
+        raise exceptions.ParameterMissingException
     
     # img_id, user_id, server_time 를 wishlist table 에 넣기
-    try:
-        wish_item = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
-        if len(wish_item)==0: #존재하지 않는 row -> 새로 table에 삽입
-            TbWishlistInfo.objects.create(user_id=user_id,image_id=img_id,server_time=server_time)
-        else: 
-            raise DataBaseException #TODO: 이미 위시리스트에 추가되어 있다로 변경
-    except: 
-       raise DataBaseException
+    #try:
+    wish_item = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
+    if len(wish_item)==0: #존재하지 않는 row -> 새로 table에 삽입
+        TbWishlistInfo.objects.create(user_id=user_id,image_id=img_id,server_time=server_time)
+    else: 
+        raise exceptions.AlreadyInWishlistException
+    #except: 
+    #   raise DataBaseException
+
+    #사용자의 wishlist 정보 반환
+    user_total_wishlist = TbWishlistInfo.objects.filter(user_id=user_id).values("image_id")
+    user_wishlist = []
+    for wish in user_total_wishlist:
+        user_wishlist.append(wish["image_id"])
 
     data = {
             "result": "succ",
-            "msg": "메세지"
+            "msg": "메세지",
+            "user_wishlist":user_wishlist,
             }
 
     return Response(data)
 
-@api_view(["DELETE"])
-def del_wish_list(request,user_id,img_id):
+@csrf_exempt
+@api_view(["POST"])
+def del_wish_list(request):
+    body = json.loads(request.body.decode("utf-8"))
+    user_id = body["user_id"]
+    img_id = body["img_id"]
+    access_token = body["access_token"]
+
     # param check
     if not user_id or not img_id:
-        raise DataBaseException #TODO: no parameter error 로 변경
+        raise exceptions.ParameterMissingException
     
+    #TODO: valid user 인지 token 검사-토큰 만료 검사
+
     # wishlist table 에서 삭제하기
     try:
         wish_item = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
         if len(wish_item)==0: #존재하지 않는 item
-            raise DataBaseException #TODO: 위시리스트에 없는 아이템이다로 변경
+            raise exceptions.NotInWishlistException
         TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).delete() #삭제 수행
     except: 
-        raise DataBaseException
+        raise exceptions.DataBaseException
 
     data = {
             "result": "succ",
@@ -352,7 +371,8 @@ def del_wish_list(request,user_id,img_id):
             }
     return Response(data)
 
-@api_view(["GET"])
+@csrf_exempt
+@api_view(["POST"])
 def exec_purchase(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -365,10 +385,12 @@ def exec_purchase(request):
 
     # param check
     if not user_id or not img_id:
-        raise DataBaseException #TODO: no parameter error 로 변경
+        raise exceptions.ParameterMissingException
     if not company_id:
-        raise DataBaseException #TODO: 제휴사 없음 팝업
-    
+        raise exceptions.DataBaseException #TODO: 제휴사 없음 팝업 -> 제휴사 없을수도 있음..?
+
+    #TODO: valid user 인지 token 검사-토큰 만료 검사
+
     try:
         # purchase_info table 에 새로운 row로 구매정보 저장
         TbPurchaseInfo.objects.create(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000) #TODO : price 변경 (어떡할지?)
@@ -381,7 +403,7 @@ def exec_purchase(request):
             upload_info.purchase_id = purchase_id
             upload_info.save()
     except:
-        raise DataBaseException
+        raise exceptions.DataBaseException
 
     # 제휴사 링크
     site_url = TbCompanyInfo.objects.filter(company_id=company_id).values("site_url")[0]

@@ -1,19 +1,9 @@
 from rest_framework.exceptions import APIException
 
 
-class InvalidPasswordException(APIException):
+class NewMemberException(APIException):
     status_code = 401
-    default_detail = "Password가 다릅니다. 확인 후 재입력하세요."
-
-
-class InvalidIdException(APIException):
-    status_code = 401
-    default_detail = "ID가 일치하지 않습니다. 확인 후 재입력하세요."
-
-
-class InvalidPasswordFiveTimesException(APIException):
-    status_code = 401
-    default_detail = "Password 오류가 5회 이상입니다. 관리자에게 문의하세요."
+    default_detail = "가입된 회원 정보가 없습니다. 회원가입 해주세요."
 
 
 class UnconnectedException(APIException):
@@ -26,29 +16,6 @@ class LeftMemberException(APIException):
     default_detail = "탈퇴한 회원입니다."
 
 
-class NotSamePasswordException(APIException):
-    status_code = 500
-    default_detail = "새로운 비밀번호와 확인 비밀번호가 일치하지 않습니다."
-
-
-class SamePasswordWhenBeforeException(APIException):
-    status_code = 500
-    default_detail = "변경하실 비밀번호가 이전과 같습니다."
-
-
-class NotSpecialCharException(APIException):
-    status_code = 500
-    default_detail = "비밀번호에 특수문자 1개 이상 포함하여야 합니다."
-
-class SameAsExistingDatasetName(APIException):
-    status_code = 500
-    default_detail = '이미 존재하는 Dataset name입니다.'
-
-class InvalidTokenException(APIException):
-    status_code = 401
-    default_detail = "Token이 유효하지 않습니다."
-
-
 class InvalidAccessTokenException(APIException):
     status_code = 500
     default_detail = "Access Token이 유효하지 않습니다."
@@ -56,32 +23,36 @@ class InvalidAccessTokenException(APIException):
 
 class ExpirationAccessTokenException(APIException):
     status_code = 401
-    default_detail = "Access Token이 만료됐습니다. Token을 갱신하거나 로그인을 다시 해주세요."
+    default_detail = "Access Token이 만료되었습니다."
 
 
 class ExpirationRefreshTokenException(APIException):
     status_code = 401
-    default_detail = "Refresh Token이 만료됐습니다. 로그인을 다시 해주세요."
+    default_detail = "Refresh Token이 만료되었습니다. 다시 로그인해주세요."
 
 
 class NotTokenInfoException(APIException):
     status_code = 401
-    default_detail = "로그인을 다시 해주세요."
+    default_detail = "다시 로그인해주세요."
+
+class ParameterMissingException(APIException):
+    status_code = 401
+    default_detail = "필요한 parameter 가 전달되지 않았습니다."
+
+
+class StorageConnectionException(APIException):
+    status_code = 500
+    default_detail = "스토리지로부터 파일을 가져오는 데 실패했습니다."
 
 
 class NotAdminException(APIException):
     status_code = 500
-    default_detail = "Admin이 아닙니다."
+    default_detail = "관리자가 아닙니다."
 
 
-class NotDeveloperException(APIException):
+class NotMemberException(APIException):
     status_code = 500
-    default_detail = "Developer가 아닙니다."
-
-
-class ExistConflictException(APIException):
-    status_code = 500
-    default_detail = "중복된 이름입니다. 다른 이름으로 만들어주세요."
+    default_detail = "맴버가 아닙니다."
 
 
 class DataBaseException(APIException):
@@ -89,11 +60,27 @@ class DataBaseException(APIException):
     default_detail = "Database Error"
 
 
-class IntegrityException(APIException):
-    status_code = 500
-    default_detail = "Integrity Error"
+class AlreadyInWishlistException(APIException):
+    status_code = 403
+    default_detail = "이미 위시리스트에 있는 항목입니다."
+
+class NotInWishlistException(APIException):
+    status_code = 403
+    default_detail = "위시리스트에 없는 항목입니다. 삭제할 수 없습니다."
 
 
-class NotAuthGroup(APIException):
-    status_code = 500
-    default_detail = "본인이 생성한 그룹만 상태 변경할 수 있습니다."
+class NoFileUploadedException(APIException):
+    status_code = 403
+    default_detail = "업로드된 사진이 없습니다."
+
+class TooManyFileUploadedException(APIException):
+    status_code = 403
+    default_detail = "사진을 1장만 업로드해주세요."
+
+class WrongFileFormatException(APIException):
+    status_code = 403
+    default_detail = "허용되는 파일 형식이 아닙니다."
+
+class TooMuchLabelSeletedException(APIException):
+    status_code = 403
+    default_detail = "선택된 라벨이 너무 많습니다."
