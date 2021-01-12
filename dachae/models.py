@@ -26,9 +26,9 @@ class TbArkworkInfo(models.Model):
     h3 = models.PositiveIntegerField(blank=True, null=True)
     s3 = models.PositiveIntegerField(blank=True, null=True)
     v3 = models.PositiveIntegerField(blank=True, null=True)
-    label1_id = models.PositiveIntegerField(blank=True, null=True)
-    label2_id = models.PositiveIntegerField(blank=True, null=True)
-    label3_id = models.PositiveIntegerField(blank=True, null=True)
+    label1 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label1_art')
+    label2 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label2_art')
+    label3 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label3_art')
 
     class Meta:
         managed = False
@@ -60,7 +60,7 @@ class TbLabelInfo(models.Model):
 
 class TbPurchaseInfo(models.Model):
     purchase_id = models.AutoField(primary_key=True)
-    user_id = models.CharField(max_length=40, blank=True, null=True)
+    user = models.ForeignKey('TbUserInfo', models.DO_NOTHING, blank=True, null=True)
     image_id = models.PositiveIntegerField()
     server_time = models.DateTimeField(blank=True, null=True)
     company = models.ForeignKey(TbCompanyInfo, models.DO_NOTHING)
@@ -83,33 +83,50 @@ class TbSampleList(models.Model):
 
 class TbUploadInfo(models.Model):
     upload_id = models.AutoField(primary_key=True)
-    user_id = models.CharField(max_length=40)
+    user_id = models.PositiveIntegerField()
     server_time = models.DateTimeField()
     room_img = models.CharField(max_length=1000)
     clustering_img = models.CharField(max_length=1000, blank=True, null=True)
-    label1_id = models.IntegerField(blank=True, null=True)
-    label2_id = models.IntegerField(blank=True, null=True)
-    label3_id = models.IntegerField(blank=True, null=True)
-    img_id = models.CharField(max_length=45, blank=True, null=True)
+    label1 = models.ForeignKey(TbLabelInfo, models.DO_NOTHING, blank=True, null=True, related_name='label1_upload')
+    label2 = models.ForeignKey(TbLabelInfo, models.DO_NOTHING, blank=True, null=True, related_name='label2_upload')
+    label3 = models.ForeignKey(TbLabelInfo, models.DO_NOTHING, blank=True, null=True, related_name='label3_upload')
+    img = models.ForeignKey(TbArkworkInfo, models.DO_NOTHING, blank=True, null=True)
     like = models.CharField(max_length=45, blank=True, null=True)
-    purchase_id = models.IntegerField(blank=True, null=True)
+    purchase = models.ForeignKey(TbPurchaseInfo, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
         managed = False
         db_table = 'TB_UPLOAD_INFO'
 
 
+class TbUserAuth(models.Model):
+    auth_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey('TbUserInfo', models.DO_NOTHING)
+    access_token = models.CharField(max_length=100)
+    expires_in = models.CharField(max_length=50)
+    scope = models.CharField(max_length=100, blank=True, null=True)
+    social_platform = models.CharField(max_length=50)
+    created_time = models.DateTimeField()
+    modified_time = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'TB_USER_AUTH'
+
+
 class TbUserInfo(models.Model):
-    user_id = models.CharField(primary_key=True, max_length=50)
+    user_id = models.AutoField(primary_key=True)
     social_platform = models.CharField(max_length=50, blank=True, null=True)
+    social_id = models.PositiveIntegerField()
     user_nm = models.CharField(max_length=50)
-    birthday_date = models.CharField(max_length=50, blank=True, null=True)
+    birthday_date = models.DateField(blank=True, null=True)
     email = models.CharField(max_length=50, blank=True, null=True)
     gender = models.CharField(max_length=50, blank=True, null=True)
     age_range = models.CharField(max_length=50, blank=True, null=True)
     rgst_date = models.DateTimeField()
     level = models.CharField(max_length=50, blank=True, null=True)
     role = models.CharField(max_length=50, blank=True, null=True)
+    state = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -131,8 +148,8 @@ class TbUserLog(models.Model):
 
 class TbWishlistInfo(models.Model):
     wish_id = models.AutoField(primary_key=True)
-    user_id = models.CharField(max_length=40)
-    image_id = models.PositiveIntegerField()
+    user = models.ForeignKey(TbUserInfo, models.DO_NOTHING)
+    image = models.ForeignKey(TbArkworkInfo, models.DO_NOTHING)
     server_time = models.DateTimeField()
 
     class Meta:

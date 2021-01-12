@@ -31,8 +31,8 @@ def set_signup(request):
     '''
     body = json.loads(request.body.decode("utf-8"))
     #TODO: frontend에서 입력형식 체크 요청
-    user_id = body["user_id"]
     social_platform = body["social_platform"]
+    social_id = body["social_id"]
     user_nm = body["user_nm"]
     birthday_date = body["birthday_date"] 
     email = body["email"]
@@ -48,14 +48,15 @@ def set_signup(request):
 
         #insert into user DB
         TbUserInfo(
-            user_id = user_id,
             social_platform = social_platform,
+            social_id = social_id,
             user_nm = user_nm,
             birthday_date = birthday_date,
             email = email,
             gender = gender,
             age_range = age_range,
             rgst_date = datetime.now(),
+            state = "active",
             level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
             role = "member"
         ).save()
@@ -149,8 +150,8 @@ def set_login(request):
 
     kakao_user_info_response = json.loads(kakao_response.text)
     #이미 존재하는 회원이면 - 로그인 실행
-    if TbUserInfo.objects.filter(social_platform="kakao",user_id=kakao_user_info_response["id"]).exists():
-        user = TbUserInfo.objects.get(user_id=kakao_user_info_response['id'])
+    if TbUserInfo.objects.filter(social_platform="kakao",social_id=kakao_user_info_response["id"]).exists():
+        user = TbUserInfo.objects.get(social_id=kakao_user_info_response['id'])
         #jwt_token = jwt.encode({'id':user.user_id},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
         
         #TODO: token 저장
@@ -161,6 +162,7 @@ def set_login(request):
             'access_token':access_token,
             'user_id': user.user_id,
             'social_platform':user.social_platform,
+            'social_id': user.social_id,
             'user_nm' : user.user_nm,
             'level' : user.level, #default free #TODO: 유료회원 받는 란? -> 추후 추가
             'role' : user.role,
@@ -172,7 +174,7 @@ def set_login(request):
         #jwt_token = jwt.encode({'id':kakao_user_info_response["id"]},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
         user_data = {
             'registered':0,
-            'user_id':kakao_user_info_response['id'],
+            'social_id': kakao_user_info_response['id'],
             'social_platform':'kakao',
         }
         return JsonResponse(user_data)
