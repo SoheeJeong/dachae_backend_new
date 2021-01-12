@@ -13,10 +13,10 @@ import json
 from datetime import datetime
 
 from .matching import GetImageColor, Recommendation
-from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo,TbSampleList
+from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserAuth,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo,TbSampleList
 from dachae import exceptions
 
-from dachae.utils import S3Connection
+from dachae.utils import S3Connection,check_token_isvalid
 
 s3connection = S3Connection()
 
@@ -177,20 +177,43 @@ def set_user_image_upload(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    user_id = request.POST.get("user_id", None) 
     upload_files = request.FILES.getlist('file')
+    user_id = request.POST.get("user_id", None) 
+    access_token = request.POST.get("access_token",None)
 
     #업로드된 파일이 없을 경우
     if not upload_files: 
         raise exceptions.NoFileUploadedException
     #업로드된 파일이 1개보다 많은 경우
     if len(upload_files)>1:
-        raise exceptions.TooManyFileUploadedException
-    
+        raise exceptions.TooManyFileUploadedException  
     #파일 확장자 검사
     filename = upload_files[0].name.split('.')
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise exceptions.WrongFileFormatException
+
+
+    if user_id==None and access_token==None:
+        print("로그인 안된 유저 버전")
+    # user 있지만 
+    user = TbUserInfo.objects.filter(user_id=user_id)
+    if user.exists():
+        #TODO: check user status (휴면,탈퇴여부) -> 적절한 exception 
+        
+        #토큰이 존재하지 않음
+        if access_token == None:
+            raise exceptions.InvalidAccessTokenException
+        #토큰 유효성 검사
+        user_info = user.values("social_id","social_platform")[0]
+        social_id = user_info["social_id"]
+        social_platform = user_info["social_platform"]
+        token_validation = check_token_isvalid(social_id,social_platform,access_token)
+        if not token_validation:
+            raise exceptions.InvalidAccessTokenException
+    # 존재하지 않는 user
+    else:
+        raise exceptions.InvalidUserId
+
 
     #파일 저장 
     try:
@@ -373,7 +396,7 @@ def del_wish_list(request):
 
 @csrf_exempt
 @api_view(["POST"])
-def exec_purchase(request):
+def load_purchase_link(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
