@@ -2,7 +2,9 @@ import os
 import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
-from datetime import date
+from datetime import date,datetime
+
+from .models import TbUserAuth
 
 #TODO: expiration time 줄이기
 
@@ -88,3 +90,19 @@ def age_range_calulator(birthday_date):
         age_range = "100세 이상"
 
     return age_range
+
+
+def check_token_isvalid(social_id,social_platform,access_token):
+    userauth_info = TbUserAuth.objects.filter(social_id=social_id,social_platform=social_platform).values("access_token","expires_in")[0]
+    #인증토큰 불일치
+    if access_token != userauth_info["access_token"]:
+        return False
+    #expire time이 지남
+    elif userauth_info["expires_in"] >= datetime.now():
+        return False
+    return True
+
+def get_expire_time_from_expires_in(expires_in):
+    ts = datetime.now() + datetime.timedelta(seconds=expires_in)
+    expire_time = ts.strftime('%Y-%m-%d %H:%M:%S')
+    return expire_time
