@@ -11,5 +11,5 @@ urlpatterns = [
     path('execRecommend/', views.exec_recommend, name='execRecommend'),
     path('setWishList/', views.set_wish_list, name='setWishList'),
     path('delWishList/', views.del_wish_list, name='delWishList'),
-    path('execPurchase/', views.exec_purchase, name='execPurchase'),
+    path('loadPurchaseLink/', views.load_purchase_link, name='loadPurchaseLink'),
 ]
