@@ -15,6 +15,9 @@ class LeftMemberException(APIException):
     status_code = 401
     default_detail = "탈퇴한 회원입니다."
 
+class InvalidUserId(APIException):
+    status_code = 401
+    default_detail = "해당 id와 일치하는 회원정보가 없습니다."
 
 class InvalidAccessTokenException(APIException):
     status_code = 500
