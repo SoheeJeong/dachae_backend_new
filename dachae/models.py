@@ -83,7 +83,7 @@ class TbSampleList(models.Model):
 
 class TbUploadInfo(models.Model):
     upload_id = models.AutoField(primary_key=True)
-    user_id = models.PositiveIntegerField()
+    user = models.ForeignKey('TbUserInfo', models.DO_NOTHING, blank=True, null=True)
     server_time = models.DateTimeField()
     room_img = models.CharField(max_length=1000)
     clustering_img = models.CharField(max_length=1000, blank=True, null=True)
@@ -101,9 +101,9 @@ class TbUploadInfo(models.Model):
 
 class TbUserAuth(models.Model):
     auth_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey('TbUserInfo', models.DO_NOTHING)
+    social_id = models.PositiveIntegerField()
     access_token = models.CharField(max_length=100)
-    expires_in = models.CharField(max_length=50)
+    expire_time = models.DateTimeField()
     scope = models.CharField(max_length=100, blank=True, null=True)
     social_platform = models.CharField(max_length=50)
     created_time = models.DateTimeField()
@@ -137,8 +137,8 @@ class TbUserLog(models.Model):
     session_id = models.AutoField(primary_key=True)
     page_id = models.PositiveIntegerField(blank=True, null=True)
     server_time = models.DateTimeField()
-    user = models.ForeignKey(TbUserInfo, models.DO_NOTHING)
-    connection_env = models.CharField(max_length=50)
+    user = models.ForeignKey(TbUserInfo, models.DO_NOTHING, blank=True, null=True)
+    connection_env = models.CharField(max_length=50, blank=True, null=True)
     device_type = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
