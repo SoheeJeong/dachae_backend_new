@@ -13,9 +13,9 @@ import requests
 import urllib
 from datetime import datetime
 
-from dachae.models import TbUserInfo,TbUserLog 
+from dachae.models import TbUserInfo,TbUserLog,TbUserAuth
 from dachae import exceptions
-from dachae.utils import age_range_calulator
+from dachae.utils import age_range_calulator,get_expire_time_from_expires_in
 
 
 #TODO: service 구조로 refactoring
@@ -37,14 +37,25 @@ def set_signup(request):
     birthday_date = body["birthday_date"] 
     email = body["email"]
     gender = body["gender"]
+    token = body["token"] #json
 
-    #TODO: param missing exception error 추가
+    if social_platform and social_id and user_nm and birthday_date and email and gender is None:
+        raise exceptions.ParameterMissingException
 
-    #생일 -> 연령대 계산기
     age_range = age_range_calulator(birthday_date) 
+    expire_time = get_expire_time_from_expires_in(token["expires_in"])
 
     try:
-        #TODO: token 저장
+        #access token 정보 저장
+        server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        TbUserAuth(
+            social_id = social_id,
+            access_token = token["access_token"],
+            expires_in = expire_time,
+            scope = token["scope"],
+            social_platform = social_platform,
+            created_time = server_time
+        ).save()
 
         #insert into user DB
         TbUserInfo(
@@ -89,7 +100,6 @@ def login_page(request):
     return render(request,'login.html',{'login_data':kakao_login_data,'logout_data':kakao_logout_data,"naver_login_data":naver_login_data})
 
 
-
 class NaverLoginView(View):
     def get(self,request):
         #frontend - for test
@@ -130,7 +140,9 @@ def set_login(request):
     token_kakao_response = requests.post(url,headers=headers,data=body)
 
     ###여기부터 backend 역할
-    access_token = json.loads(token_kakao_response.text).get("access_token")
+    access_info = json.loads(token_kakao_response.text)
+    access_token = access_info["access_token"]
+    expires_in = access_info["expires_in"]
 
     if not access_token:
         raise exceptions.InvalidAccessTokenException
@@ -154,7 +166,9 @@ def set_login(request):
         user = TbUserInfo.objects.get(social_id=kakao_user_info_response['id'])
         #jwt_token = jwt.encode({'id':user.user_id},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
         
-        #TODO: token 저장
+        #TODO: 예외처리 추가
+        #TODO: TbUserAuth table의 access token, expire_time, modified_time 정보 update
+        expire_time = get_expire_time_from_expires_in(expires_in)
 
         #권한정보, 사용자정보 넘겨주기
         user_data = {
@@ -198,6 +212,16 @@ def set_logout(request):
 def refresh_token(request):
     '''
     토큰갱신
+    '''
+    data = {"data":"temp"}
+    return Response(data)
+
+
+@csrf_exempt
+@api_view(["POST"])
+def set_withdrawal(request):
+    '''
+    회원탈퇴
     '''
     data = {"data":"temp"}
     return Response(data)
