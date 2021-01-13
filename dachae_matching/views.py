@@ -43,7 +43,6 @@ def get_best_image_list(request):
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
-    #TODO: best image list table 로 바꾸기
     best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","product_id")
     end = len(best_image_list) if not end else int(end)
     data_list = best_image_list[int(start):end+1]
@@ -232,6 +231,7 @@ def set_user_image_upload(request):
             "result": "succ",
             "msg": "메세지",
             "file_addr" : s3_url,
+            "room_img" : key
             }
 
     return Response(data)
@@ -243,8 +243,10 @@ def exec_recommend(request):
     매칭 수행
     '''
     body = json.loads(request.body.decode("utf-8"))
-    upload_id = None if not body["upload_id"] else body["upload_id"]
-    if not upload_id:
+    user_id = body["user_id"]
+    room_img = body["room_img"]
+
+    if not user_id or not room_img:
         raise exceptions.ParameterMissingException
 
     label_list = body["label_list"]
@@ -259,8 +261,10 @@ def exec_recommend(request):
         else:
             label_id_list.append(None)   
 
-    room_img_key = models.TbUploadInfo.objects.filter(upload_id=upload_id).values("room_img")[0]["room_img"] #user upload image key (storage)
-    room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img_key)
+    upload_object = models.TbUploadInfo.objects.filter(user_id=user_id,room_img=room_img)
+    if not upload_object.exists():
+        raise exceptions.DataBaseException
+    room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img)
 
     #load artwork data
     pic_data = models.TbArtworkInfo.objects.values('img_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
@@ -271,17 +275,17 @@ def exec_recommend(request):
     clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
 
     #save clustering result into s3 storage
-    clt_key = CLUSTER_FOLDER_NAME + room_img_key
+    clt_key = CLUSTER_FOLDER_NAME + room_img
     s3connection.upload_file_into_s3(clt_path,CLUSTER_BUCKET_NAME,clt_key)
     clt_url = s3connection.get_presigned_url(CLUSTER_BUCKET_NAME,clt_key)
 
     #TODO: 예외처리 추가
-    #TODO: clustering result 사진 삭제
+    #clustering result 사진 삭제
     os.remove(clt_path)
 
     #선택된 label과 clustering 결과 이미지 path를 models.Tb_upload_info에 저장
     try:
-        models.TbUploadInfo.objects.filter(upload_id=upload_id).update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
+        upload_object.update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
     except:
         raise exceptions.DataBaseException
 
@@ -293,16 +297,14 @@ def exec_recommend(request):
     data = {
         'result':'succ',
         'msg':'message',
-        'recommend':{
-            'upload_id':upload_id,
-            'room_img':room_img_url,
-            'clustering_result':clt_url,
-            'chosen_label':label_nm_list,
-            'recommend_images':{
-                'analog':analog['img_path'],
-                'comp':comp['img_path'],
-                'mono':mono['img_path']   
-            }
+        'upload_id':upload_object.values("upload_id")[0]["upload_id"],
+        'room_img':room_img_url,
+        'clustering_result':clt_url,
+        'chosen_label':label_nm_list,
+        'recommend_images':{
+            'analog':analog['img_path'],
+            'comp':comp['img_path'],
+            'mono':mono['img_path']   
         }
     }
     return Response(data)
@@ -384,41 +386,50 @@ def load_purchase_link(request):
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # get params
-    user_id = request.GET.get("user_id",None)
-    img_id = request.GET.get("img_id",None)
-    room_img = request.GET.get("room_img",None) #매칭에서 넘어온 경우만 room_img가 not None
-    company_id = request.GET.get("company_id",None)
+    body = json.loads(request.body.decode("utf-8"))
+    user_id = body["user_id"]
+    access_token = body["access_token"]
+    img_id = body["img_id"]
+    room_img = body["room_img"] #매칭에서 넘어온 경우만 room_img가 not None
+    company_id = body["company_id"]
 
     # param check
     if not user_id or not img_id:
         raise exceptions.ParameterMissingException
     if not company_id:
-        raise exceptions.DataBaseException #TODO: 제휴사 없음 팝업 -> 제휴사 없을수도 있음..?
+        raise exceptions.NoCompanyInfoException
 
-    #TODO: valid user 인지 token 검사-토큰 만료 검사
+    #valid user 인지 token 검사-토큰 만료 검사
+    check_token_isvalid(access_token,user_id)
 
     try:
         # purchase_info table 에 새로운 row로 구매정보 저장
-        models.TbPurchaseInfo.objects.create(user_id=user_id, img_id=img_id, server_time=server_time, company_id=company_id,price=3000) #TODO : price 변경 (어떡할지?)
-        purchase_item = models.TbPurchaseInfo.objects.filter(user_id=user_id, img_id=img_id, server_time=server_time, company_id=company_id,price=3000)
+        models.TbPurchaseInfo.objects.create(user_id=user_id, img_id=img_id, server_time=server_time)
+        purchase_item = models.TbPurchaseInfo.objects.filter(user_id=user_id, img_id=img_id, server_time=server_time)
         purchase_id = purchase_item.values("purchase_id")[0]["purchase_id"] #TODO: 방금 생성한 item 의 pk 얻는법 이게 최선?
 
         # matching 후 구매 시 models.models.Tb_UPLOAD_INFO 에 purchase_id 저장
-        if room_img is not None:
+        if room_img != "":
             upload_info = models.TbUploadInfo.objects.get(user_id=user_id, room_img=room_img)
-            upload_info.purchase_id = purchase_id
-            upload_info.save()
+            if upload_info.exists():
+                upload_info.purchase_id = purchase_id
+                upload_info.save()
+            else:
+                print('here')
     except:
         raise exceptions.DataBaseException
 
-    # 제휴사 링크
-    site_url = models.TbCompanyInfo.objects.filter(company_id=company_id).values("site_url")[0]
-
+    # 구매 링크
+    try:
+        product_id = models.TbArtworkInfo.objects.filter(img_id=img_id).values("product_id")[0]["product_id"]
+        purchase_url = models.TbProductInfo.objects.filter(product_id=product_id).values("purchase_url")[0]
+    except:
+        raise exceptions.NoProductInfoException
     data = {
         "result": "succ",
         "msg": "메세지",
         "data":{
-        "link": site_url["site_url"]
+        "purchase_link": purchase_url["purchase_url"]
         }
     }
     return Response(data)
