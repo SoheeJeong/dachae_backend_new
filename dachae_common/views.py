@@ -47,6 +47,7 @@ def set_signup(request):
 
     try:
         #access token 정보 저장
+        #TODO: device type, connection env 저장
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         TbUserAuth(
             social_id = social_id,
@@ -125,19 +126,22 @@ def set_login(request):
     '''
     카카오, 네이버 로그인
     '''
+    # social_platform = request.POST.get("social_platform",None)
+    access_token = request.META['HTTP_AUTHORIZATION']
+    print(access_token)
     ###frontend 역할 -> TODO: 코드 제거
-    #1. 인증 코드 요청 (from frontend)
-    kakao_access_code = request.GET.get('code',None)
-    #2. access token 요청
-    url = 'https://kauth.kakao.com/oauth/token'
-    headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
-    body = {
-        'grant_type' : 'authorization_code',
-        'client_id' : os.getenv("KAKAO_APP_KEY"),
-        'redirect_uri' : os.getenv("REDIRECT_URI"),
-        'code' : kakao_access_code
-    }
-    token_kakao_response = requests.post(url,headers=headers,data=body)
+    # #1. 인증 코드 요청 (from frontend)
+    # kakao_access_code = request.GET.get('code',None)
+    # #2. access token 요청
+    # url = 'https://kauth.kakao.com/oauth/token'
+    # headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
+    # body = {
+    #     'grant_type' : 'authorization_code',
+    #     'client_id' : os.getenv("KAKAO_APP_KEY"),
+    #     'redirect_uri' : os.getenv("REDIRECT_URI"),
+    #     'code' : kakao_access_code
+    # }
+    # token_kakao_response = requests.post(url,headers=headers,data=body)
 
     ###여기부터 backend 역할
     access_info = json.loads(token_kakao_response.text)
@@ -167,18 +171,19 @@ def set_login(request):
         #jwt_token = jwt.encode({'id':user.user_id},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
         
         #TODO: 예외처리 추가
+        #TODO: 이미 다른 기기에서 로그인 되어있는지 검사 (TbUserAuth 테이블 검사) - 새로 로그인 하시겠습니까? -> ok시 UserAuth 에서 row 삭제
         #TODO: TbUserAuth table의 access token, expire_time, modified_time 정보 update
+        #TODO: device type, connection env 저장
         expire_time = get_expire_time_from_expires_in(expires_in)
 
         #권한정보, 사용자정보 넘겨주기
         user_data = {
             'registered':1, #이미 회원가입된 사용자 -> 추가 회원가입 페이지 불필요, 메인페이지로 redirect
-            'access_token':access_token,
             'user_id': user.user_id,
             'social_platform':user.social_platform,
             'social_id': user.social_id,
             'user_nm' : user.user_nm,
-            'level' : user.level, #default free #TODO: 유료회원 받는 란? -> 추후 추가
+            'level' : user.level, #default free 
             'role' : user.role,
         }
         return JsonResponse(user_data)
@@ -189,7 +194,7 @@ def set_login(request):
         user_data = {
             'registered':0,
             'social_id': kakao_user_info_response['id'],
-            'social_platform':'kakao',
+            'social_platform':'kakao'
         }
         return JsonResponse(user_data)
 
