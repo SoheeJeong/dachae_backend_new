@@ -92,7 +92,10 @@ def age_range_calulator(birthday_date):
     return age_range
 
 
-def check_token_isvalid(social_id,social_platform,access_token):
+def check_token_isvalid(access_token,user):
+    user_info = user.values("social_id","social_platform")[0]
+    social_id = user_info["social_id"]
+    social_platform = user_info["social_platform"]
     userauth_info = TbUserAuth.objects.filter(social_id=social_id,social_platform=social_platform).values("access_token","expires_in")[0]
     #인증토큰 불일치
     if access_token != userauth_info["access_token"]:

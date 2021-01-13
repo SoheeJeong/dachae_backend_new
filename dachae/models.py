@@ -140,6 +140,7 @@ class TbUserLog(models.Model):
     user = models.ForeignKey(TbUserInfo, models.DO_NOTHING, blank=True, null=True)
     connection_env = models.CharField(max_length=50, blank=True, null=True)
     device_type = models.CharField(max_length=50, blank=True, null=True)
+    action = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
         managed = False

@@ -204,10 +204,7 @@ def set_user_image_upload(request):
         if access_token == None:
             raise exceptions.InvalidAccessTokenException
         #토큰 유효성 검사
-        user_info = user.values("social_id","social_platform")[0]
-        social_id = user_info["social_id"]
-        social_platform = user_info["social_platform"]
-        token_validation = check_token_isvalid(social_id,social_platform,access_token)
+        token_validation = check_token_isvalid(access_token,user)
         if not token_validation:
             raise exceptions.InvalidAccessTokenException
     # 존재하지 않는 user
