@@ -4,7 +4,8 @@ from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
 from datetime import date,datetime
 
-from .models import TbUserAuth
+from .models import TbUserAuth,TbUserInfo
+import dachae.exceptions as exceptions
 
 #TODO: expiration time 줄이기
 
@@ -92,18 +93,42 @@ def age_range_calulator(birthday_date):
     return age_range
 
 
-def check_token_isvalid(access_token,user):
-    user_info = user.values("social_id","social_platform")[0]
-    social_id = user_info["social_id"]
-    social_platform = user_info["social_platform"]
-    userauth_info = TbUserAuth.objects.filter(social_id=social_id,social_platform=social_platform).values("access_token","expires_in")[0]
-    #인증토큰 불일치
-    if access_token != userauth_info["access_token"]:
-        return False
-    #expire time이 지남
-    elif userauth_info["expires_in"] >= datetime.now():
-        return False
-    return True
+
+def check_token_isvalid(access_token,user_id):
+    if user_id==None and access_token==None:
+        return "not logged"
+
+    user = TbUserInfo.objects.filter(user_id=user_id)
+    
+    if user.exists():
+        #토큰이 존재하지 않음
+        if access_token == None:
+            raise exceptions.ParameterMissingException
+
+        user_info = user.values("social_id","social_platform","state")[0]
+        social_id = user_info["social_id"]
+        social_platform = user_info["social_platform"]
+
+        userauth_info = TbUserAuth.objects.filter(social_id=social_id,social_platform=social_platform).values("access_token","expire_time")[0]
+        
+        #인증토큰 불일치
+        if access_token != userauth_info["access_token"]:
+            raise exceptions.InvalidAccessTokenException
+        #expire time이 지남
+        elif userauth_info["expire_time"] <= datetime.now():
+            raise exceptions.ExpiredAccessTokenException
+
+        #TODO: check user status (휴면,탈퇴여부) -> 적절한 exception 
+        if user_info["state"] == "withdrawn":
+            raise exceptions.LeftMemberException
+        elif user_info["state"] == "dormant":
+            raise exceptions.DormantMemberException
+        
+    else:
+        # return "no user exists"
+        raise exceptions.InvalidUserIdException
+
+    return "valid user"
 
 def get_expire_time_from_expires_in(expires_in):
     ts = datetime.now() + datetime.timedelta(seconds=expires_in)

@@ -51,7 +51,7 @@ def set_signup(request):
         TbUserAuth(
             social_id = social_id,
             access_token = token["access_token"],
-            expires_in = expire_time,
+            expire_time = expire_time,
             scope = token["scope"],
             social_platform = social_platform,
             created_time = server_time

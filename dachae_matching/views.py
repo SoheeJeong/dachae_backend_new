@@ -192,25 +192,9 @@ def set_user_image_upload(request):
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise exceptions.WrongFileFormatException
 
-
-    if user_id==None and access_token==None:
+    token_validation = check_token_isvalid(access_token,user_id)
+    if token_validation == "not logged":
         print("로그인 안된 유저 버전")
-    # user 있지만 
-    user = TbUserInfo.objects.filter(user_id=user_id)
-    if user.exists():
-        #TODO: check user status (휴면,탈퇴여부) -> 적절한 exception 
-        
-        #토큰이 존재하지 않음
-        if access_token == None:
-            raise exceptions.InvalidAccessTokenException
-        #토큰 유효성 검사
-        token_validation = check_token_isvalid(access_token,user)
-        if not token_validation:
-            raise exceptions.InvalidAccessTokenException
-    # 존재하지 않는 user
-    else:
-        raise exceptions.InvalidUserId
-
 
     #파일 저장 
     try:

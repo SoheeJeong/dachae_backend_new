@@ -6,7 +6,7 @@ class NewMemberException(APIException):
     default_detail = "가입된 회원 정보가 없습니다. 회원가입 해주세요."
 
 
-class UnconnectedException(APIException):
+class DormantMemberException(APIException):
     status_code = 401
     default_detail = "해당 계정은 3개월 이상 미접속하여 휴면상태가 되었습니다. 관리자에게 문의하세요."
 
@@ -15,7 +15,7 @@ class LeftMemberException(APIException):
     status_code = 401
     default_detail = "탈퇴한 회원입니다."
 
-class InvalidUserId(APIException):
+class InvalidUserIdException(APIException):
     status_code = 401
     default_detail = "해당 id와 일치하는 회원정보가 없습니다."
 
@@ -24,7 +24,7 @@ class InvalidAccessTokenException(APIException):
     default_detail = "Access Token이 유효하지 않습니다."
 
 
-class ExpirationAccessTokenException(APIException):
+class ExpiredAccessTokenException(APIException):
     status_code = 401
     default_detail = "Access Token이 만료되었습니다."
 
