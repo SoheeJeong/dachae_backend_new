@@ -27,6 +27,7 @@ class TbArtworkInfo(models.Model):
     label1 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label1_art')
     label2 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label2_art')
     label3 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label3_art')
+    product = models.ForeignKey('TbProductInfo', models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -98,7 +99,6 @@ class TbUploadInfo(models.Model):
     label1 = models.ForeignKey(TbLabelInfo, models.DO_NOTHING, blank=True, null=True, related_name='label1_upload')
     label2 = models.ForeignKey(TbLabelInfo, models.DO_NOTHING, blank=True, null=True, related_name='label2_upload')
     label3 = models.ForeignKey(TbLabelInfo, models.DO_NOTHING, blank=True, null=True, related_name='label3_upload')
-    img = models.ForeignKey(TbArkworkInfo, models.DO_NOTHING, blank=True, null=True)
     like = models.CharField(max_length=45, blank=True, null=True)
     purchase = models.ForeignKey(TbPurchaseInfo, models.DO_NOTHING, blank=True, null=True)
 
@@ -115,6 +115,8 @@ class TbUserAuth(models.Model):
     scope = models.CharField(max_length=100, blank=True, null=True)
     created_time = models.DateTimeField()
     modified_time = models.DateTimeField(blank=True, null=True)
+    device_type = models.CharField(max_length=10, blank=True, null=True)
+    connection_env = models.CharField(max_length=10, blank=True, null=True)
 
     class Meta:
         managed = False

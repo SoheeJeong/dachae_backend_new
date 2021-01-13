@@ -103,13 +103,11 @@ def check_token_isvalid(access_token,user_id):
     if user.exists():
         #토큰이 존재하지 않음
         if access_token == None:
-            raise exceptions.ParameterMissingException
+            raise exceptions.NotTokenInfoException #다시 로그인해주세요
 
-        user_info = user.values("social_id","social_platform","state")[0]
-        social_id = user_info["social_id"]
-        social_platform = user_info["social_platform"]
+        user_info = user.values("state")[0]
 
-        userauth_info = TbUserAuth.objects.filter(social_id=social_id,social_platform=social_platform).values("access_token","expire_time")[0]
+        userauth_info = TbUserAuth.objects.filter(user_id=user_id).values("access_token","expire_time")[0]
         
         #인증토큰 불일치
         if access_token != userauth_info["access_token"]:
