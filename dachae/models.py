@@ -8,15 +8,13 @@
 from django.db import models
 
 
-class TbArkworkInfo(models.Model):
-    image_id = models.AutoField(primary_key=True)
+class TbArtworkInfo(models.Model):
+    img_id = models.AutoField(primary_key=True)
     img_path = models.CharField(max_length=100)
     title = models.CharField(max_length=50, blank=True, null=True)
     author = models.CharField(max_length=50, blank=True, null=True)
     era = models.CharField(max_length=50, blank=True, null=True)
     style = models.CharField(max_length=50, blank=True, null=True)
-    company = models.ForeignKey('TbCompanyInfo', models.DO_NOTHING, blank=True, null=True)
-    price = models.PositiveIntegerField(blank=True, null=True)
     h1 = models.PositiveIntegerField(blank=True, null=True)
     s1 = models.PositiveIntegerField(blank=True, null=True)
     v1 = models.PositiveIntegerField(blank=True, null=True)
@@ -32,7 +30,7 @@ class TbArkworkInfo(models.Model):
 
     class Meta:
         managed = False
-        db_table = 'TB_ARKWORK_INFO'
+        db_table = 'TB_ARTWORK_INFO'
 
 
 class TbCompanyInfo(models.Model):
@@ -58,13 +56,23 @@ class TbLabelInfo(models.Model):
         db_table = 'TB_LABEL_INFO'
 
 
+class TbProductInfo(models.Model):
+    product_id = models.AutoField(primary_key=True)
+    company = models.ForeignKey(TbCompanyInfo, models.DO_NOTHING)
+    price = models.CharField(max_length=50, blank=True, null=True)
+    purchase_url = models.CharField(max_length=500)
+    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING)
+
+    class Meta:
+        managed = False
+        db_table = 'TB_PRODUCT_INFO'
+
+
 class TbPurchaseInfo(models.Model):
     purchase_id = models.AutoField(primary_key=True)
     user = models.ForeignKey('TbUserInfo', models.DO_NOTHING, blank=True, null=True)
-    image_id = models.PositiveIntegerField()
     server_time = models.DateTimeField(blank=True, null=True)
-    company = models.ForeignKey(TbCompanyInfo, models.DO_NOTHING)
-    price = models.CharField(max_length=45, blank=True, null=True)
+    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING)
 
     class Meta:
         managed = False
@@ -74,7 +82,7 @@ class TbPurchaseInfo(models.Model):
 class TbSampleList(models.Model):
     sample_id = models.AutoField(primary_key=True)
     sample_path = models.CharField(max_length=70)
-    artwork = models.ForeignKey(TbArkworkInfo, models.DO_NOTHING, blank=True, null=True)
+    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -101,11 +109,10 @@ class TbUploadInfo(models.Model):
 
 class TbUserAuth(models.Model):
     auth_id = models.AutoField(primary_key=True)
-    social_id = models.PositiveIntegerField()
+    user = models.ForeignKey('TbUserInfo', models.DO_NOTHING)
     access_token = models.CharField(max_length=100)
     expire_time = models.DateTimeField()
     scope = models.CharField(max_length=100, blank=True, null=True)
-    social_platform = models.CharField(max_length=50)
     created_time = models.DateTimeField()
     modified_time = models.DateTimeField(blank=True, null=True)
 
@@ -134,13 +141,16 @@ class TbUserInfo(models.Model):
 
 
 class TbUserLog(models.Model):
-    session_id = models.AutoField(primary_key=True)
+    log_id = models.AutoField(primary_key=True)
     page_id = models.PositiveIntegerField(blank=True, null=True)
     server_time = models.DateTimeField()
     user = models.ForeignKey(TbUserInfo, models.DO_NOTHING, blank=True, null=True)
     connection_env = models.CharField(max_length=50, blank=True, null=True)
     device_type = models.CharField(max_length=50, blank=True, null=True)
     action = models.CharField(max_length=50, blank=True, null=True)
+    purchase = models.ForeignKey(TbPurchaseInfo, models.DO_NOTHING, blank=True, null=True)
+    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING, blank=True, null=True)
+    label_list = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -150,8 +160,8 @@ class TbUserLog(models.Model):
 class TbWishlistInfo(models.Model):
     wish_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(TbUserInfo, models.DO_NOTHING)
-    image = models.ForeignKey(TbArkworkInfo, models.DO_NOTHING)
     server_time = models.DateTimeField()
+    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING)
 
     class Meta:
         managed = False

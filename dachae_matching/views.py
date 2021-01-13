@@ -13,7 +13,7 @@ import json
 from datetime import datetime
 
 from .matching import GetImageColor, Recommendation
-from dachae.models import TbArkworkInfo,TbCompanyInfo,TbLabelInfo,TbUploadInfo,TbUserAuth,TbUserInfo,TbUserLog,TbWishlistInfo,TbPurchaseInfo,TbSampleList
+from dachae import models
 from dachae import exceptions
 
 from dachae.utils import S3Connection,check_token_isvalid
@@ -26,6 +26,7 @@ ARTWORK_LABEL_NUM = 3 #명화 1개당 라벨 개수
 ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
 USER_BUCKET_NAME = os.getenv("USER_BUCKET_NAME")
 CLUSTER_BUCKET_NAME = os.getenv("CLUSTER_BUCKET_NAME")
+CLUSTER_FOLDER_NAME = os.getenv("CLUSTER_FOLDER_NAME")
 SAMPLE_BUCKET_NAME = os.getenv("SAMPLE_BUCKET_NAME")
 
 #TODO: service 구조로 refactoring
@@ -43,7 +44,7 @@ def get_best_image_list(request):
     end = request.GET.get("end",None)  
 
     #TODO: best image list table 로 바꾸기
-    best_image_list = TbSampleList.objects.values("sample_path","sample_id","artwork_id")
+    best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","product_id")
     end = len(best_image_list) if not end else int(end)
     data_list = best_image_list[int(start):end+1]
     #s3 path 로 바꾸기
@@ -69,21 +70,22 @@ def get_picture_filtered_result(request):
     label_list = body["label_list"]
 
     if len(label_list)==0:
-        result_image_list = TbArkworkInfo.objects.values("img_path","image_id")
+        result_image_list = models.TbArtworkInfo.objects.values("img_path","img_id")
+
     else:
         #TODO: filter 기준 정립 필요
         #label_query 초기화 - empty result
         first_label = label_list[0]["label_id"]
-        label_query = TbArkworkInfo.objects.filter(label1_id=first_label,label2_id=first_label,label3_id=first_label) 
+        label_query = models.TbArtworkInfo.objects.filter(label1_id=first_label,label2_id=first_label,label3_id=first_label) 
         #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork object들의 합집합
         for label_dict in label_list: 
             #TODO: artwork 별로 몇개의 라벨이 포함되어 있는지 count 정보 저장 필요. 이 기준으로 sorting 필요.
-            label_query = label_query.union(TbArkworkInfo.objects.filter(label1_id=label_dict["label_id"]))
-            label_query = label_query.union(TbArkworkInfo.objects.filter(label2_id=label_dict["label_id"]))
-            label_query = label_query.union(TbArkworkInfo.objects.filter(label3_id=label_dict["label_id"]))
+            label_query = label_query.union(models.TbArtworkInfo.objects.filter(label1_id=label_dict["label_id"]))
+            label_query = label_query.union(models.TbArtworkInfo.objects.filter(label2_id=label_dict["label_id"]))
+            label_query = label_query.union(models.TbArtworkInfo.objects.filter(label3_id=label_dict["label_id"]))
 
         #TODO: order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
-        result_image_list = label_query.order_by("image_id").values("img_path","image_id")
+        result_image_list = label_query.order_by("img_id").values("img_path","img_id")
         
         #s3 파일 경로 얻기
         for i in range(len(result_image_list)):
@@ -108,8 +110,8 @@ def get_picture_detail_info(request):
     if not img_id:
         raise exceptions.ParameterMissingException
 
-    image_data = TbArkworkInfo.objects.filter(image_id=img_id).values("img_path","title","author","era","style","company_id","price","label1_id","label2_id","label3_id")[0] #,"label4_id","label5_id")
-    company_nm = TbCompanyInfo.objects.filter(company_id=image_data["company_id"]).values("company_nm")
+    image_data = models.TbArtworkInfo.objects.filter(img_id=img_id).values("img_path","title","author","era","style","company_id","price","label1_id","label2_id","label3_id")[0] #,"label4_id","label5_id")
+    company_nm = models.TbCompanyInfo.objects.filter(company_id=image_data["company_id"]).values("company_nm")
     
     del image_data["company_id"]
     image_data.update(company_nm[0])
@@ -123,7 +125,7 @@ def get_picture_detail_info(request):
 
         if label_id is not None:
             try:
-                label_nm = TbLabelInfo.objects.filter(label_id=label_id).values("label_nm")[0]
+                label_nm = models.TbLabelInfo.objects.filter(label_id=label_id).values("label_nm")[0]
                 label_list.append(label_nm["label_nm"])
             except:
                 raise exceptions.DataBaseException
@@ -156,7 +158,7 @@ def get_label_list(request):
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
-    label_list = TbLabelInfo.objects.values("label_nm","label_id")
+    label_list = models.TbLabelInfo.objects.values("label_nm","label_id")
     end = len(label_list) if not end else min(len(label_list),int(end)+1)
 
     data_list = label_list[int(start):end]
@@ -212,10 +214,10 @@ def set_user_image_upload(request):
             s3_url = s3connection.get_presigned_url(bucket,key) 
         else: 
             raise exceptions.StorageConnectionException      
-        #TB_UPLOAD_INFO 에 업로드 정보 저장
+        #models.Tb_UPLOAD_INFO 에 업로드 정보 저장
         if s3_url:
-            #TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
-            TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=key) #key를 저장
+            #models.TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
+            models.TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=key) #key를 저장
         else:
             exceptions.DataBaseException
 
@@ -257,11 +259,11 @@ def exec_recommend(request):
         else:
             label_id_list.append(None)   
 
-    room_img_key = TbUploadInfo.objects.filter(upload_id=upload_id).values("room_img")[0]["room_img"] #user upload image key (storage)
+    room_img_key = models.TbUploadInfo.objects.filter(upload_id=upload_id).values("room_img")[0]["room_img"] #user upload image key (storage)
     room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img_key)
 
     #load artwork data
-    pic_data = TbArkworkInfo.objects.values('image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
+    pic_data = models.TbArtworkInfo.objects.values('img_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
 
     #exec recommend
     getimgcolor = GetImageColor(room_img_url)
@@ -269,7 +271,7 @@ def exec_recommend(request):
     clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
 
     #save clustering result into s3 storage
-    clt_key = room_img_key
+    clt_key = CLUSTER_FOLDER_NAME + room_img_key
     s3connection.upload_file_into_s3(clt_path,CLUSTER_BUCKET_NAME,clt_key)
     clt_url = s3connection.get_presigned_url(CLUSTER_BUCKET_NAME,clt_key)
 
@@ -277,9 +279,9 @@ def exec_recommend(request):
     #TODO: clustering result 사진 삭제
     os.remove(clt_path)
 
-    #선택된 label과 clustering 결과 이미지 path를 Tb_upload_info에 저장
+    #선택된 label과 clustering 결과 이미지 path를 models.Tb_upload_info에 저장
     try:
-        TbUploadInfo.objects.filter(upload_id=upload_id).update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
+        models.TbUploadInfo.objects.filter(upload_id=upload_id).update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
     except:
         raise exceptions.DataBaseException
 
@@ -324,19 +326,19 @@ def set_wish_list(request):
     
     # img_id, user_id, server_time 를 wishlist table 에 넣기
     #try:
-    wish_item = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
+    wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).values()
     if len(wish_item)==0: #존재하지 않는 row -> 새로 table에 삽입
-        TbWishlistInfo.objects.create(user_id=user_id,image_id=img_id,server_time=server_time)
+        models.TbWishlistInfo.objects.create(user_id=user_id,img_id=img_id,server_time=server_time)
     else: 
         raise exceptions.AlreadyInWishlistException
     #except: 
     #   raise DataBaseException
 
     #사용자의 wishlist 정보 반환
-    user_total_wishlist = TbWishlistInfo.objects.filter(user_id=user_id).values("image_id")
+    user_total_wishlist = models.TbWishlistInfo.objects.filter(user_id=user_id).values("img_id")
     user_wishlist = []
     for wish in user_total_wishlist:
-        user_wishlist.append(wish["image_id"])
+        user_wishlist.append(wish["img_id"])
 
     data = {
             "result": "succ",
@@ -362,10 +364,10 @@ def del_wish_list(request):
 
     # wishlist table 에서 삭제하기
     try:
-        wish_item = TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).values()
+        wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).values()
         if len(wish_item)==0: #존재하지 않는 item
             raise exceptions.NotInWishlistException
-        TbWishlistInfo.objects.filter(user_id=user_id,image_id=img_id).delete() #삭제 수행
+        models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).delete() #삭제 수행
     except: 
         raise exceptions.DataBaseException
 
@@ -397,20 +399,20 @@ def load_purchase_link(request):
 
     try:
         # purchase_info table 에 새로운 row로 구매정보 저장
-        TbPurchaseInfo.objects.create(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000) #TODO : price 변경 (어떡할지?)
-        purchase_item = TbPurchaseInfo.objects.filter(user_id=user_id, image_id=img_id, server_time=server_time, company_id=company_id,price=3000)
+        models.TbPurchaseInfo.objects.create(user_id=user_id, img_id=img_id, server_time=server_time, company_id=company_id,price=3000) #TODO : price 변경 (어떡할지?)
+        purchase_item = models.TbPurchaseInfo.objects.filter(user_id=user_id, img_id=img_id, server_time=server_time, company_id=company_id,price=3000)
         purchase_id = purchase_item.values("purchase_id")[0]["purchase_id"] #TODO: 방금 생성한 item 의 pk 얻는법 이게 최선?
 
-        # matching 후 구매 시 TB_UPLOAD_INFO 에 purchase_id 저장
+        # matching 후 구매 시 models.models.Tb_UPLOAD_INFO 에 purchase_id 저장
         if room_img is not None:
-            upload_info = TbUploadInfo.objects.get(user_id=user_id, room_img=room_img)
+            upload_info = models.TbUploadInfo.objects.get(user_id=user_id, room_img=room_img)
             upload_info.purchase_id = purchase_id
             upload_info.save()
     except:
         raise exceptions.DataBaseException
 
     # 제휴사 링크
-    site_url = TbCompanyInfo.objects.filter(company_id=company_id).values("site_url")[0]
+    site_url = models.TbCompanyInfo.objects.filter(company_id=company_id).values("site_url")[0]
 
     data = {
         "result": "succ",
