@@ -40,6 +40,8 @@ def get_best_image_list(request):
     메인화면에서 샘플사진 리스트 로드
     param example) start=0&end=2 이면 index 0,1,2 사진 로드 (1,2,3 번째 사진 로드)
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
+    user_id = request.GET.get('user_id',None)
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
@@ -65,6 +67,7 @@ def get_picture_filtered_result(request):
     '''
     키워드 및 느낌라벨로 명화 검색
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
     body = json.loads(request.body.decode("utf-8"))
     label_list = body["label_list"]
     user_id = None if "user_id" not in body else body["user_id"]
@@ -110,6 +113,8 @@ def get_picture_detail_info(request):
     '''
     명화 1개의 상세정보 가져오기 (이미지 클릭 시 명화 상세정보 페이지로 이동)
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
+    user_id = request.GET.get('user_id',None)
     img_id = request.GET.get("img_id",None)  
     if not img_id:
         raise exceptions.ParameterMissingException
@@ -167,6 +172,8 @@ def get_label_list(request):
     느낌라벨 리스트 가져오기
     param example) start=0&end=2 이면 index 0,1,2 라벨 로드 (1,2,3 번째 라벨 로드)
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
+    user_id = request.GET.get('user_id',None)
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
@@ -190,6 +197,7 @@ def set_user_image_upload(request):
     사용자 로컬이미지 업로드 -> set into storage -> 로컬데이터 삭제
     '''
     # server time 
+    access_token = request.META['HTTP_AUTHORIZATION']
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     upload_files = request.FILES.getlist('file')
     user_id = request.POST.get("user_id", None) 
@@ -429,6 +437,7 @@ def load_purchase_link(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # get params
+    access_token = request.META['HTTP_AUTHORIZATION']
     user_id = request.GET.get("user_id",None)
     img_id = request.GET.get("img_id",None)
     upload_id = request.GET.get("upload_id",None)
