@@ -419,23 +419,22 @@ def del_wish_list(request):
             }
     return Response(data)
 
-@csrf_exempt
-@api_view(["POST"])
+@api_view(["GET"])
 def load_purchase_link(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # get params
-    body = json.loads(request.body.decode("utf-8"))
-    user_id = None if "user_id" not in body else body["user_id"]
-    img_id = None if "img_id" not in body else body["img_id"]    
-    company_id = None if "company_id" not in body else body["company_id"]
-    upload_id = None if "upload_id" not in body else body["upload_id"]
+    user_id = request.GET.get("user_id",None)
+    img_id = request.GET.get("img_id",None)
+    upload_id = request.GET.get("upload_id",None)
+    # body = json.loads(request.body.decode("utf-8"))
+    # user_id = None if "user_id" not in body else body["user_id"]
+    # img_id = None if "img_id" not in body else body["img_id"]    
+    # upload_id = None if "upload_id" not in body else body["upload_id"]
 
     # param check
-    if not user_id or not img_id:
+    if not img_id:
         raise exceptions.ParameterMissingException
-    if not company_id:
-        raise exceptions.NoCompanyInfoException
 
     try:
         # purchase_info table 에 새로운 row로 구매정보 저장
