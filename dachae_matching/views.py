@@ -43,8 +43,8 @@ def get_best_image_list(request):
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
-    best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","product_id")
-    end = len(best_image_list) if not end else int(end)
+    best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","img_id")
+    end = len(best_image_list) if not end else min(len(best_image_list),int(end)+1)
     data_list = best_image_list[int(start):end+1]
     #s3 path 로 바꾸기
     for i in range(len(data_list)):
