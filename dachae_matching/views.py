@@ -50,7 +50,6 @@ def get_best_image_list(request):
         #s3 path 로 바꾸기
         for i in range(len(data_list)):
             img_key = data_list[i]["sample_path"]
-            print(img_key)
             data_list[i]["sample_path"] = s3connection.get_presigned_url(SAMPLE_BUCKET_NAME,img_key)
     except:
         raise exceptions.DataBaseException

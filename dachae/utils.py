@@ -2,6 +2,7 @@ import os
 import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
+from botocore.errorfactory import ClientError
 from datetime import date,datetime
 
 from .models import TbUserAuth,TbUserInfo
@@ -28,6 +29,12 @@ class S3Connection():
         :param expiration: Time in seconds for the presigned URL to remain valid
         :return: Presigned URL as string. If error, returns None.
         """
+        # check if object exists
+        try:
+            self.s3_client.head_object(Bucket=bucket, Key=key)
+        except ClientError:
+            return "file does not exists in s3 bucket"
+
         # Generate the URL to get 'key-name' from 'bucket-name'
         try:
             url = self.s3_client.generate_presigned_url(
@@ -39,7 +46,7 @@ class S3Connection():
                 ExpiresIn=expiration, #expiration sec 이후에 만료
             )
         except:
-            return None
+            return "AWS S3 connection failed"
 
         return url
 
