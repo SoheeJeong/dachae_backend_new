@@ -111,12 +111,22 @@ def get_picture_detail_info(request):
     img_id = request.GET.get("img_id",None)  
     if not img_id:
         raise exceptions.ParameterMissingException
-
-    image_data = models.TbArtworkInfo.objects.filter(img_id=img_id).values("img_path","title","author","era","style","company_id","price","label1_id","label2_id","label3_id")[0] #,"label4_id","label5_id")
-    company_nm = models.TbCompanyInfo.objects.filter(company_id=image_data["company_id"]).values("company_nm")
     
-    del image_data["company_id"]
-    image_data.update(company_nm[0])
+    image_data = models.TbArtworkInfo.objects.filter(img_id=img_id).values("img_path","title","author","era","style","product_id","label1_id","label2_id","label3_id") #,"label4_id","label5_id")
+    if image_data.exists():
+        image_data = image_data[0]
+        company_info = models.TbProductInfo.objects.filter(product_id=image_data["product_id"]).values("company_id","price")
+        if company_info.exists():
+            company_nm = models.TbCompanyInfo.objects.filter(company_id=company_info[0]["company_id"]).values("company_nm")
+        else:
+            raise exceptions.NoCompanyInfoException
+        
+        image_data.update(company_info[0])
+        image_data.update(company_nm[0])
+        del image_data["product_id"]
+        del image_data["company_id"]
+    else:
+        raise exceptions.NoImageInfoException
 
     # 명화의 라벨 리스트 생성
     label_list = []
@@ -145,8 +155,6 @@ def get_picture_detail_info(request):
     image_data["img_path"]=s3_url
 
     data = {
-            "result": "succ",
-            "msg": "메세지",
             "data": image_data,
             }
     return Response(data)

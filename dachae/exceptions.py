@@ -50,6 +50,10 @@ class NoProductInfoException(APIException):
     status_code = 401
     default_detail = "해당 상품에 대한 정보가 존재하지 않습니다."
 
+class NoImageInfoException(APIException):
+    status_code = 401
+    default_detail = "해당 이미지에 대한 정보가 존재하지 않습니다."
+
 class StorageConnectionException(APIException):
     status_code = 500
     default_detail = "스토리지로부터 파일을 가져오는 데 실패했습니다."
