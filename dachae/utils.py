@@ -3,7 +3,7 @@ import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
 from botocore.errorfactory import ClientError
-from datetime import date,datetime
+import datetime
 
 from .models import TbUserAuth,TbUserInfo
 import dachae.exceptions as exceptions
@@ -66,7 +66,7 @@ class S3Connection():
         #     return savepath
 
 def age_range_calulator(birthday_date):
-    todays_date = date.today()
+    todays_date = datetime.date.today()
     
     birthday_split_list = birthday_date.split("-")
     born_year = int(birthday_split_list[0])
@@ -131,7 +131,7 @@ def check_token_isvalid(access_token,user_id,restrict=True):
                 return "invalid token"
             raise exceptions.InvalidAccessTokenException
         #expire time이 지남
-        elif userauth_info["expire_time"] <= datetime.now():
+        elif userauth_info["expire_time"] <= datetime.datetime.now():
             if not restrict:
                 return "expired token"
             raise exceptions.ExpiredAccessTokenException
@@ -153,7 +153,7 @@ def check_token_isvalid(access_token,user_id,restrict=True):
     return "valid user"
 
 def get_expire_time_from_expires_in(expires_in):
-    ts = datetime.now() + datetime.timedelta(seconds=expires_in)
+    ts = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
     expire_time = ts.strftime('%Y-%m-%d %H:%M:%S')
     return expire_time
 

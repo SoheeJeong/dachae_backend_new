@@ -11,7 +11,7 @@ from django.db import models
 class TbActionInfo(models.Model):
     action_id = models.AutoField(primary_key=True)
     action_nm = models.CharField(max_length=50)
-    upload = models.ForeignKey('TbUploadInfo', models.DO_NOTHING, blank=True, null=True)
+    upload_id = models.PositiveIntegerField(blank=True, null=True)
     img = models.ForeignKey('TbArtworkInfo', models.DO_NOTHING, blank=True, null=True)
     label1 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label1_action')
     label2 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label2_action')
@@ -94,7 +94,7 @@ class TbProductInfo(models.Model):
 
 class TbPurchaseInfo(models.Model):
     purchase_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey('TbUserInfo', models.DO_NOTHING, blank=True, null=True)
+    user_id = models.PositiveIntegerField(blank=True, null=True)
     server_time = models.DateTimeField(blank=True, null=True)
     img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING)
 
@@ -115,7 +115,7 @@ class TbSampleList(models.Model):
 
 class TbUploadInfo(models.Model):
     upload_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey('TbUserInfo', models.DO_NOTHING, blank=True, null=True)
+    user_id = models.PositiveIntegerField(blank=True, null=True)
     server_time = models.DateTimeField()
     room_img = models.CharField(max_length=1000)
     clustering_img = models.CharField(max_length=1000, blank=True, null=True)
@@ -123,7 +123,7 @@ class TbUploadInfo(models.Model):
     label2 = models.ForeignKey(TbLabelInfo, models.DO_NOTHING, blank=True, null=True, related_name='label2_upload')
     label3 = models.ForeignKey(TbLabelInfo, models.DO_NOTHING, blank=True, null=True, related_name='label3_upload')
     like = models.CharField(max_length=45, blank=True, null=True)
-    purchase = models.ForeignKey(TbPurchaseInfo, models.DO_NOTHING, blank=True, null=True)
+    purchase_id = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -132,14 +132,11 @@ class TbUploadInfo(models.Model):
 
 class TbUserAuth(models.Model):
     auth_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey('TbUserInfo', models.DO_NOTHING)
+    user_id = models.PositiveIntegerField()
     access_token = models.CharField(max_length=100)
     expire_time = models.DateTimeField()
-    scope = models.CharField(max_length=100, blank=True, null=True)
     created_time = models.DateTimeField()
     modified_time = models.DateTimeField(blank=True, null=True)
-    device_type = models.CharField(max_length=10, blank=True, null=True)
-    connection_env = models.CharField(max_length=10, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -156,9 +153,9 @@ class TbUserInfo(models.Model):
     gender = models.CharField(max_length=50, blank=True, null=True)
     age_range = models.CharField(max_length=50, blank=True, null=True)
     rgst_date = models.DateTimeField()
+    state = models.CharField(max_length=50, blank=True, null=True)
     level = models.CharField(max_length=50, blank=True, null=True)
     role = models.CharField(max_length=50, blank=True, null=True)
-    state = models.CharField(max_length=50, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -169,7 +166,7 @@ class TbUserLog(models.Model):
     log_id = models.AutoField(primary_key=True)
     page_id = models.PositiveIntegerField(blank=True, null=True)
     server_time = models.DateTimeField()
-    user = models.ForeignKey(TbUserInfo, models.DO_NOTHING, blank=True, null=True)
+    user_id = models.PositiveIntegerField(blank=True, null=True)
     action = models.ForeignKey(TbActionInfo, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
@@ -179,7 +176,7 @@ class TbUserLog(models.Model):
 
 class TbWishlistInfo(models.Model):
     wish_id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(TbUserInfo, models.DO_NOTHING)
+    user_id = models.PositiveIntegerField()
     server_time = models.DateTimeField()
     img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING)
 

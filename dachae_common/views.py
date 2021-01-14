@@ -33,48 +33,51 @@ def set_signup(request):
     access_token = header['Authorization'] if 'Authorization' in header else None
     body = json.loads(request.body.decode("utf-8"))
     #TODO: frontend에서 입력형식 체크 요청
+    #TODO: default None 추가
     social_platform = body["social_platform"]
     social_id = body["social_id"]
     user_nm = body["user_nm"]
+    level = body["level"]
+    role = body["role"]
     birthday_date = body["birthday_date"] 
     email = body["email"]
     gender = body["gender"]
-    token = body["token"] #json
+    expires_in = body["expires_in"]
 
-    if social_platform and social_id and user_nm and birthday_date and email and gender is None:
+    if social_platform and social_id and user_nm and level and role and birthday_date and email and gender and expires_in is None:
         raise exceptions.ParameterMissingException
 
     age_range = age_range_calulator(birthday_date) 
-    expire_time = get_expire_time_from_expires_in(token["expires_in"])
+    expire_time = get_expire_time_from_expires_in(expires_in)
 
-    try:
-        #access token 정보 저장
-        server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        TbUserAuth(
-            social_id = social_id,
-            access_token = token["access_token"],
-            expire_time = expire_time,
-            scope = token["scope"],
-            social_platform = social_platform,
-            created_time = server_time
-        ).save()
+    #try:
+    #insert into user DB
+    user_info = TbUserInfo(
+        social_platform = social_platform,
+        social_id = social_id,
+        user_nm = user_nm,
+        birthday_date = birthday_date,
+        email = email,
+        gender = gender,
+        age_range = age_range,
+        rgst_date = datetime.now(),
+        state = "active",
+        level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
+        role = "member"
+    )
+    user_info.save()
+    user_id = user_info.user_id
+    #access token 정보 저장
+    server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    TbUserAuth(
+        user_id = user_id,
+        access_token = access_token,
+        expire_time = expire_time,
+        created_time = server_time
+    ).save()
 
-        #insert into user DB
-        TbUserInfo(
-            social_platform = social_platform,
-            social_id = social_id,
-            user_nm = user_nm,
-            birthday_date = birthday_date,
-            email = email,
-            gender = gender,
-            age_range = age_range,
-            rgst_date = datetime.now(),
-            state = "active",
-            level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
-            role = "member"
-        ).save()
-    except:
-        raise exceptions.DataBaseException
+    #except:
+    #   raise exceptions.DataBaseException
 
 
     response = {
@@ -122,7 +125,7 @@ class NaverLoginView(View):
         #     print("Error Code:" + rescode)
 
 
-@csrf_exempt
+@api_view(["GET"])
 def set_login(request):
     '''
     카카오, 네이버 로그인
@@ -160,13 +163,16 @@ def set_login(request):
             #'property_keys':'["properties.nickname","properties.profile_image","properties.thumbnail_image"]'
         }
         kakao_response = requests.post(url,headers=headers,data=body)
+        kakao_user_info_response = json.loads(kakao_response.text)
+        social_id = kakao_user_info_response["id"] if "id" in kakao_user_info_response else None
+        if not social_id:
+            raise exceptions.InvalidAccessTokenException
     except:
         raise exceptions.InvalidAccessTokenException
-
-    kakao_user_info_response = json.loads(kakao_response.text)
+    
     #이미 존재하는 회원이면 - 로그인 실행
-    if TbUserInfo.objects.filter(social_platform="kakao",social_id=kakao_user_info_response["id"]).exists():
-        user = TbUserInfo.objects.get(social_id=kakao_user_info_response['id'])
+    if TbUserInfo.objects.filter(social_platform="kakao",social_id=social_id).exists():
+        user = TbUserInfo.objects.get(social_id=social_id)
         #jwt_token = jwt.encode({'id':user.user_id},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
         
         #TODO: 예외처리 추가
@@ -184,6 +190,16 @@ def set_login(request):
             'level' : user.level, #default free 
             'role' : user.role,
         }
+        #TODO:temp,지우기
+        user_data = {
+            "registered":1, 
+            "user_id": "12",
+            "social_platform": "kakao",
+            "social_id":123456,
+            "user_nm" : "닉네임",               
+            "level" : "free", 
+            "role" : "member"
+        }
         return JsonResponse(user_data)
 
     #새로운 회원이면 - registered=0 으로 세팅 (바로 회원가입 페이지로)
@@ -193,6 +209,12 @@ def set_login(request):
             'registered':0,
             'social_id': kakao_user_info_response['id'],
             'social_platform':'kakao'
+        }
+        #TODO:temp,지우기
+        user_data = {
+            'registered':0,
+            "social_platform": "kakao",
+            "social_id":123456,
         }
         return JsonResponse(user_data)
 
@@ -214,7 +236,7 @@ def set_logout(request):
     # kakao logout
     # "https://kauth.kakao.com/oauth/logout?client_id={{logout_data.REST_API_KEY}}&logout_redirect_uri={{logout_data.LOGOUT_REDIRECT_URI}}"
     
-    data = {"data":"temp"}
+    data = {"result":"succ"}
     return Response(data)
 
 
@@ -224,9 +246,9 @@ def refresh_token(request):
     토큰갱신
     '''
     header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
+    refresh_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get("user_id",None)
-    data = {"data":"temp"}
+    data = {"result":"succ"}
     return Response(data)
 
 
@@ -244,7 +266,7 @@ def set_withdrawal(request):
     if validation == "not logged":
         raise exceptions.LoginRequiredException
     
-    data = {"data":"temp"}
+    data = {"result":"succ"}
     return Response(data)
 
 @api_view(["GET"])
@@ -261,5 +283,15 @@ def get_user_info(request):
     if validation == "not logged":
         raise exceptions.LoginRequiredException
 
-    data = {"data":"temp"}
+    data = {
+        'user_id': 123456,
+        'social_platform': 'naver',
+        'user_nm' : "닉네임",            
+        'level' : 'free', 
+        'role' : 'member',
+        "email":"wjdthgmlgo@naver.com",
+        "gender":"female",
+        "birthday_date":"1998-06-16",
+        "rgst_date":"2021-01-11 22:09:38",
+    }
     return Response(data)
