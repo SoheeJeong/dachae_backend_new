@@ -29,6 +29,7 @@ def set_signup(request):
     새로운 회원 회원가입 실행
     소셜로그인에서 넘어온 회원가입 페이지
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
     body = json.loads(request.body.decode("utf-8"))
     #TODO: frontend에서 입력형식 체크 요청
     social_platform = body["social_platform"]
@@ -144,9 +145,8 @@ def set_login(request):
     # token_kakao_response = requests.post(url,headers=headers,data=body)
 
     ###여기부터 backend 역할
-    access_info = json.loads(token_kakao_response.text)
-    access_token = access_info["access_token"]
-    expires_in = access_info["expires_in"]
+    access_token = request.META['HTTP_AUTHORIZATION']
+    expires_in = request.GET.get("expires_in",None)
 
     if not access_token:
         raise exceptions.InvalidAccessTokenException
@@ -198,12 +198,13 @@ def set_login(request):
         }
         return JsonResponse(user_data)
 
-@csrf_exempt
-@api_view(["POST"])
+@api_view(["GET"])
 def set_logout(request):
     '''
     로그아웃
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
+    user_id = request.GET.get("user_id",None)
     #TODO: delete token
     # kakao logout
     # "https://kauth.kakao.com/oauth/logout?client_id={{logout_data.REST_API_KEY}}&logout_redirect_uri={{logout_data.LOGOUT_REDIRECT_URI}}"
@@ -212,27 +213,28 @@ def set_logout(request):
     return Response(data)
 
 
-@csrf_exempt
-@api_view(["POST"])
+@api_view(["GET"])
 def refresh_token(request):
     '''
     토큰갱신
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
+    user_id = request.GET.get("user_id",None)
     data = {"data":"temp"}
     return Response(data)
 
 
-@csrf_exempt
-@api_view(["POST"])
+@api_view(["GET"])
 def set_withdrawal(request):
     '''
     회원탈퇴
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
+    user_id = request.GET.get("user_id",None)
     data = {"data":"temp"}
     return Response(data)
 
-@csrf_exempt
-@api_view(["POST"])
+@api_view(["GET"])
 def get_user_info(request):
     '''
     사용자 정보 가져오기
