@@ -229,7 +229,9 @@ def set_user_image_upload(request):
         #models.Tb_UPLOAD_INFO 에 업로드 정보 저장
         if s3_url:
             #models.TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
-            models.TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=key) #key를 저장
+            upload_obj = models.TbUploadInfo(user_id=user_id,server_time=server_time,room_img=key) #key를 저장
+            upload_obj.save()
+            upload_id = upload_obj.upload_id
         else:
             exceptions.DataBaseException
 
@@ -251,7 +253,8 @@ def set_user_image_upload(request):
 
     data = {
             "file_addr" : s3_url,
-            "room_img" : key
+            "room_img" : key,
+            "upload_id" : upload_id,
             }
 
     return Response(data)
@@ -265,9 +268,10 @@ def exec_recommend(request):
     access_token = request.META['HTTP_AUTHORIZATION']
     body = json.loads(request.body.decode("utf-8"))
     user_id = None if "user_id" not in body else body["user_id"]
+    upload_id = None if "upload_id" not in body else body["upload_id"] 
     room_img = None if "room_img" not in body else body["room_img"] 
-
-    if not room_img:
+    
+    if not room_img or not upload_id:
         raise exceptions.ParameterMissingException
 
     label_list = body["label_list"]
@@ -282,10 +286,11 @@ def exec_recommend(request):
         else:
             label_id_list.append(None)   
 
-    if user_id:
-        upload_object = models.TbUploadInfo.objects.filter(user_id=user_id,room_img=room_img)
-    else:
-        upload_object = models.TbUploadInfo.objects.filter(user_id__isnull=True,room_img=room_img)
+    # if user_id:
+    #     upload_object = models.TbUploadInfo.objects.filter(user_id=user_id,room_img=room_img)
+    # else:
+    #     upload_object = models.TbUploadInfo.objects.filter(user_id__isnull=True,room_img=room_img)
+    upload_object = models.TbUploadInfo.objects.filter(upload_id=upload_id)
     if not upload_object.exists():
         raise exceptions.DataBaseException
 

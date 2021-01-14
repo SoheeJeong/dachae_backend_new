@@ -8,6 +8,20 @@
 from django.db import models
 
 
+class TbActionInfo(models.Model):
+    action_id = models.AutoField(primary_key=True)
+    action_nm = models.CharField(max_length=50)
+    upload = models.ForeignKey('TbUploadInfo', models.DO_NOTHING, blank=True, null=True)
+    img = models.ForeignKey('TbArtworkInfo', models.DO_NOTHING, blank=True, null=True)
+    label1 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label1_action')
+    label2 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label2_action')
+    label3 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label3_action')
+
+    class Meta:
+        managed = False
+        db_table = 'TB_ACTION_INFO'
+
+
 class TbArtworkInfo(models.Model):
     img_id = models.AutoField(primary_key=True)
     img_path = models.CharField(max_length=100)
@@ -55,6 +69,15 @@ class TbLabelInfo(models.Model):
     class Meta:
         managed = False
         db_table = 'TB_LABEL_INFO'
+
+
+class TbPageInfo(models.Model):
+    page_id = models.AutoField(primary_key=True)
+    page_nm = models.CharField(max_length=50, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'TB_PAGE_INFO'
 
 
 class TbProductInfo(models.Model):
@@ -147,12 +170,7 @@ class TbUserLog(models.Model):
     page_id = models.PositiveIntegerField(blank=True, null=True)
     server_time = models.DateTimeField()
     user = models.ForeignKey(TbUserInfo, models.DO_NOTHING, blank=True, null=True)
-    connection_env = models.CharField(max_length=50, blank=True, null=True)
-    device_type = models.CharField(max_length=50, blank=True, null=True)
-    action = models.CharField(max_length=50, blank=True, null=True)
-    purchase = models.ForeignKey(TbPurchaseInfo, models.DO_NOTHING, blank=True, null=True)
-    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING, blank=True, null=True)
-    label_list = models.CharField(max_length=100, blank=True, null=True)
+    action = models.ForeignKey(TbActionInfo, models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
         managed = False
