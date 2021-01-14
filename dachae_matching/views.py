@@ -168,13 +168,14 @@ def get_label_list(request):
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
-    label_list = models.TbLabelInfo.objects.values("label_nm","label_id")
+    try:
+        label_list = models.TbLabelInfo.objects.values("label_nm","label_id")
+    except:
+        raise exceptions.DataBaseException
+    
     end = len(label_list) if not end else min(len(label_list),int(end)+1)
-
     data_list = label_list[int(start):end]
     data = {
-            "result": "succ",
-            "msg": "메세지",
             "data" : data_list,
             }
 
