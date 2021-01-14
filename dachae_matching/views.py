@@ -208,12 +208,11 @@ def set_user_image_upload(request):
     #파일 저장 
     try:
         #백엔드에 사용자 업로드 이미지 저장
-        #TODO: 로그인 안된 사용자의 경우 파일명 어떻게 지정? servertime+난수?
+        rand_str = get_random_string(8)
         if user_id:
-            filename = server_time + user_id + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
+            filename = server_time + user_id + rand_str + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
             save_path = os.path.join(user_id, filename)
         else:
-            rand_str = get_random_string(8)
             filename = server_time + rand_str + upload_files[0].name 
             save_path = os.path.join(rand_str, filename)
         default_storage.save(save_path, upload_files[0])
