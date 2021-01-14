@@ -95,8 +95,10 @@ def get_picture_filtered_result(request):
     #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
     
     #TODO: save into user log
-    if models.TbUserInfo.objects.filter(user_id=user_id).exists():
-        print("save into user log")
+    if user_id is None or not models.TbUserInfo.objects.filter(user_id=user_id).exists():
+        print("save into user log with user=null")
+    else:
+        print("save into user log with user")
         
     data = {
         "data" : result_image_list,
@@ -189,7 +191,6 @@ def set_user_image_upload(request):
     '''
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
     upload_files = request.FILES.getlist('file')
     user_id = request.POST.get("user_id", None) 
 
@@ -235,8 +236,10 @@ def set_user_image_upload(request):
         #default_storage.delete(upload_file_path) #업로드 file만 삭제
         
         #TODO: save into user log
-        if models.TbUserInfo.objects.filter(user_id=user_id).exists():
-            print("save into user log")
+        if user_id is None or not models.TbUserInfo.objects.filter(user_id=user_id).exists():
+            print("save into user log with user=null")
+        else:
+            print("save into user log with user")
 
     except: 
         raise exceptions.DataBaseException
@@ -274,7 +277,10 @@ def exec_recommend(request):
         else:
             label_id_list.append(None)   
 
-    upload_object = models.TbUploadInfo.objects.filter(user_id=user_id,room_img=room_img)
+    if user_id:
+        upload_object = models.TbUploadInfo.objects.filter(user_id=user_id,room_img=room_img)
+    else:
+        upload_object = models.TbUploadInfo.objects.filter(user_id__isnull=True,room_img=room_img)
     if not upload_object.exists():
         raise exceptions.DataBaseException
 
@@ -310,14 +316,12 @@ def exec_recommend(request):
     #matching.py 에서 아얘 라벨 필터링까지 한 결과를 반환하도록 할지? 아니면 여기서 필터링할지?
     
     user_status = check_token_isvalid(access_token,user_id,False)
-    if user_status == "no user exists":
-        show_range = "part"
-    else:
+    if user_status == "valid user":
         #TODO: user log 추가
-        if user_status == "valid user":
-            show_range = "all"
-        else:
-            show_range = "part"
+        show_range = "all"
+    else:
+        #TODO: user log 추가 -> user=null
+        show_range = "part"
 
     data = {
         'show_range':show_range,
