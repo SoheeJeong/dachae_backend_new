@@ -48,7 +48,6 @@ def set_signup(request):
 
     try:
         #access token 정보 저장
-        #TODO: device type, connection env 저장
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         TbUserAuth(
             social_id = social_id,
@@ -173,7 +172,6 @@ def set_login(request):
         #TODO: 예외처리 추가
         #TODO: 이미 다른 기기에서 로그인 되어있는지 검사 (TbUserAuth 테이블 검사) - 새로 로그인 하시겠습니까? -> ok시 UserAuth 에서 row 삭제
         #TODO: TbUserAuth table의 access token, expire_time, modified_time 정보 update
-        #TODO: device type, connection env 저장
         expire_time = get_expire_time_from_expires_in(expires_in)
 
         #권한정보, 사용자정보 넘겨주기

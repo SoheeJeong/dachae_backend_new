@@ -45,6 +45,9 @@ def get_best_image_list(request):
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
+    # user validation check
+    check_token_isvalid(access_token,user_id)
+
     try:
         best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","img_id")
         end = len(best_image_list) if not end else min(len(best_image_list),int(end)+1)
@@ -71,6 +74,9 @@ def get_picture_filtered_result(request):
     body = json.loads(request.body.decode("utf-8"))
     label_list = body["label_list"]
     user_id = None if "user_id" not in body else body["user_id"]
+
+    # user validation check
+    check_token_isvalid(access_token,user_id)
     
     if len(label_list)==0:
         result_image_list = models.TbArtworkInfo.objects.values("img_path","img_id")
@@ -116,8 +122,12 @@ def get_picture_detail_info(request):
     access_token = request.META['HTTP_AUTHORIZATION']
     user_id = request.GET.get('user_id',None)
     img_id = request.GET.get("img_id",None)  
+        
     if not img_id:
         raise exceptions.ParameterMissingException
+
+    # user validation check
+    check_token_isvalid(access_token,user_id)
     
     image_data = models.TbArtworkInfo.objects.filter(img_id=img_id).values("img_path","title","author","era","style","product_id","label1_id","label2_id","label3_id") #,"label4_id","label5_id")
     if image_data.exists():
@@ -177,6 +187,9 @@ def get_label_list(request):
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
+    # user validation check
+    check_token_isvalid(access_token,user_id)
+
     try:
         label_list = models.TbLabelInfo.objects.values("label_nm","label_id")
     except:
@@ -201,6 +214,9 @@ def set_user_image_upload(request):
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     upload_files = request.FILES.getlist('file')
     user_id = request.POST.get("user_id", None) 
+
+    # user validation check
+    check_token_isvalid(access_token,user_id)
 
     #업로드된 파일이 없을 경우
     if not upload_files: 
@@ -282,6 +298,9 @@ def exec_recommend(request):
     if not room_img or not upload_id:
         raise exceptions.ParameterMissingException
 
+    # user validation check
+    check_token_isvalid(access_token,user_id)
+
     label_list = body["label_list"]
     if len(label_list) > MAX_LABEL_NUM:
         raise exceptions.TooMuchLabelSeletedException
@@ -333,8 +352,7 @@ def exec_recommend(request):
     #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list)
     #matching.py 에서 아얘 라벨 필터링까지 한 결과를 반환하도록 할지? 아니면 여기서 필터링할지?
     
-    user_status = check_token_isvalid(access_token,user_id,False)
-    if user_status == "valid user":
+    if user_id:
         #TODO: user log 추가
         show_range = "all"
     else:
@@ -449,6 +467,9 @@ def load_purchase_link(request):
     # param check
     if not img_id:
         raise exceptions.ParameterMissingException
+
+    # user validation check
+    check_token_isvalid(access_token,user_id)
 
     try:
         # purchase_info table 에 새로운 row로 구매정보 저장
