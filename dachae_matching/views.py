@@ -192,7 +192,6 @@ def set_user_image_upload(request):
     
     upload_files = request.FILES.getlist('file')
     user_id = request.POST.get("user_id", None) 
-    access_token = request.POST.get("access_token",None)
 
     #업로드된 파일이 없을 경우
     if not upload_files: 
@@ -205,9 +204,7 @@ def set_user_image_upload(request):
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise exceptions.WrongFileFormatException
 
-    token_validation = check_token_isvalid(access_token,user_id)
-    if token_validation == "not logged":
-        print("로그인 안된 유저 버전")
+    # token_validation = check_token_isvalid(access_token,user_id)
 
     #파일 저장 
     try:
@@ -235,13 +232,15 @@ def set_user_image_upload(request):
         #백엔드에서 삭제
         shutil.rmtree(os.path.join(settings.MEDIA_ROOT,user_id)) #user folder 전체를 삭제
         #default_storage.delete(upload_file_path) #업로드 file만 삭제
+        
+        #TODO: save into user log
+        if models.TbUserInfo.objects.filter(user_id=user_id).exists():
+            print("save into user log")
 
     except: 
         raise exceptions.DataBaseException
 
     data = {
-            "result": "succ",
-            "msg": "메세지",
             "file_addr" : s3_url,
             "room_img" : key
             }
