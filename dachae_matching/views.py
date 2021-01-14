@@ -424,14 +424,12 @@ def del_wish_list(request):
 def load_purchase_link(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
     # get params
     body = json.loads(request.body.decode("utf-8"))
-    user_id = body["user_id"]
-    access_token = body["access_token"]
-    img_id = body["img_id"]
-    room_img = body["room_img"] #매칭에서 넘어온 경우만 room_img가 not None
-    company_id = body["company_id"]
+    user_id = None if "user_id" not in body else body["user_id"]
+    img_id = None if "img_id" not in body else body["img_id"]    
+    company_id = None if "company_id" not in body else body["company_id"]
+    upload_id = None if "upload_id" not in body else body["upload_id"]
 
     # param check
     if not user_id or not img_id:
@@ -439,37 +437,37 @@ def load_purchase_link(request):
     if not company_id:
         raise exceptions.NoCompanyInfoException
 
-    #valid user 인지 token 검사-토큰 만료 검사
-    check_token_isvalid(access_token,user_id)
-
     try:
         # purchase_info table 에 새로운 row로 구매정보 저장
-        models.TbPurchaseInfo.objects.create(user_id=user_id, img_id=img_id, server_time=server_time)
-        purchase_item = models.TbPurchaseInfo.objects.filter(user_id=user_id, img_id=img_id, server_time=server_time)
-        purchase_id = purchase_item.values("purchase_id")[0]["purchase_id"] #TODO: 방금 생성한 item 의 pk 얻는법 이게 최선?
+        if user_id:
+            purchase_obj = models.TbPurchaseInfo(user_id=user_id, img_id=img_id, server_time=server_time)
+            purchase_obj.save()
+        else:
+            purchase_obj = models.TbPurchaseInfo(img_id=img_id, server_time=server_time)
+            purchase_obj.save()
+        purchase_id = purchase_obj.purchase_id
 
         # matching 후 구매 시 models.models.Tb_UPLOAD_INFO 에 purchase_id 저장
-        if room_img != "":
-            upload_info = models.TbUploadInfo.objects.get(user_id=user_id, room_img=room_img)
-            if upload_info.exists():
-                upload_info.purchase_id = purchase_id
-                upload_info.save()
-            else:
-                print('here')
+        if upload_id and models.TbUploadInfo.objects.filter(upload_id=upload_id).exists():
+            upload_info = models.TbUploadInfo.objects.get(upload_id=upload_id)
+            upload_info.purchase_id = purchase_id
+            upload_info.save()
+        # 구매 링크
+        try:
+            product_id = models.TbArtworkInfo.objects.filter(img_id=img_id).values("product_id")[0]["product_id"]
+            purchase_url = models.TbProductInfo.objects.filter(product_id=product_id).values("purchase_url")[0]
+        except:
+            raise exceptions.NoProductInfoException
     except:
         raise exceptions.DataBaseException
 
-    # 구매 링크
-    try:
-        product_id = models.TbArtworkInfo.objects.filter(img_id=img_id).values("product_id")[0]["product_id"]
-        purchase_url = models.TbProductInfo.objects.filter(product_id=product_id).values("purchase_url")[0]
-    except:
-        raise exceptions.NoProductInfoException
+    #TODO: save into user log
+    if user_id is None or not models.TbUserInfo.objects.filter(user_id=user_id).exists():
+        print("save into user log with user=null")
+    else:
+        print("save into user log with user")
+
     data = {
-        "result": "succ",
-        "msg": "메세지",
-        "data":{
         "purchase_link": purchase_url["purchase_url"]
         }
-    }
     return Response(data)
