@@ -67,10 +67,8 @@ def get_picture_filtered_result(request):
     '''
     body = json.loads(request.body.decode("utf-8"))
     label_list = body["label_list"]
-    usr_id = None if "user_id" not in body else body["user_id"]
+    user_id = None if "user_id" not in body else body["user_id"]
     
-    #TODO: 로그인된 사용자인지 검사
-
     if len(label_list)==0:
         result_image_list = models.TbArtworkInfo.objects.values("img_path","img_id")
 
@@ -89,15 +87,17 @@ def get_picture_filtered_result(request):
         #TODO: order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
         result_image_list = label_query.order_by("img_id").values("img_path","img_id")
         
-        #s3 파일 경로 얻기
-        for i in range(len(result_image_list)):
-            img_key = result_image_list[i]["img_path"] #get key
-            result_image_list[i]["img_path"] = s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+    #s3 파일 경로 얻기
+    for i in range(len(result_image_list)):
+        img_key = result_image_list[i]["img_path"] #get key
+        result_image_list[i]["img_path"] = s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
 
-        #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
+    #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
     
     #TODO: save into user log
-
+    if models.TbUserInfo.objects.filter(user_id=user_id).exists():
+        print("save into user log")
+        
     data = {
         "data" : result_image_list,
     }
