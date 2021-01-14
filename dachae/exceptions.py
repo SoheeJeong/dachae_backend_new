@@ -5,6 +5,10 @@ class NewMemberException(APIException):
     status_code = 401
     default_detail = "가입된 회원 정보가 없습니다. 회원가입 해주세요."
 
+class LoginRequiredException(APIException):
+    status_code = 401
+    default_detail = "로그인이 필요한 기능입니다. 로그인 해주세요."
+
 
 class DormantMemberException(APIException):
     status_code = 401

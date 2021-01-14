@@ -40,7 +40,8 @@ def get_best_image_list(request):
     메인화면에서 샘플사진 리스트 로드
     param example) start=0&end=2 이면 index 0,1,2 사진 로드 (1,2,3 번째 사진 로드)
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get('user_id',None)
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
@@ -70,7 +71,8 @@ def get_picture_filtered_result(request):
     '''
     키워드 및 느낌라벨로 명화 검색
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     body = json.loads(request.body.decode("utf-8"))
     label_list = body["label_list"]
     user_id = None if "user_id" not in body else body["user_id"]
@@ -119,7 +121,8 @@ def get_picture_detail_info(request):
     '''
     명화 1개의 상세정보 가져오기 (이미지 클릭 시 명화 상세정보 페이지로 이동)
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get('user_id',None)
     img_id = request.GET.get("img_id",None)  
         
@@ -182,7 +185,8 @@ def get_label_list(request):
     느낌라벨 리스트 가져오기
     param example) start=0&end=2 이면 index 0,1,2 라벨 로드 (1,2,3 번째 라벨 로드)
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get('user_id',None)
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
@@ -210,8 +214,10 @@ def set_user_image_upload(request):
     사용자 로컬이미지 업로드 -> set into storage -> 로컬데이터 삭제
     '''
     # server time 
-    access_token = request.META['HTTP_AUTHORIZATION']
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # get params
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     upload_files = request.FILES.getlist('file')
     user_id = request.POST.get("user_id", None) 
 
@@ -289,7 +295,8 @@ def exec_recommend(request):
     '''
     매칭 수행
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     body = json.loads(request.body.decode("utf-8"))
     user_id = None if "user_id" not in body else body["user_id"]
     upload_id = None if "upload_id" not in body else body["upload_id"] 
@@ -376,38 +383,41 @@ def exec_recommend(request):
 
 ##### 찜, 구매 #####
 
-@csrf_exempt
-@api_view(["POST"])
+@api_view(["GET"])
 def set_wish_list(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    access_token = request.META['HTTP_AUTHORIZATION']
-    body = json.loads(request.body.decode("utf-8"))
-    user_id = None if "user_id" not in body else body["user_id"]
-    img_id = None if "img_id" not in body else body["img_id"]
+    # get param
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
+    user_id = request.GET.get("user_id",None)
+    img_id = request.GET.get("img_id",None)
 
     # param check
-    if not user_id or not img_id or not access_token:
+    if not img_id:
         raise exceptions.ParameterMissingException
     
-    # valid user 인지 검사
-    check_token_isvalid(access_token,user_id)
+    if not models.TbArtworkInfo.objects.filter(img_id=img_id).exists():
+        raise exceptions.NoImageInfoException
+
+    #valid user 인지 검사
+    validation = check_token_isvalid(access_token,user_id)
+    if validation == "not logged":
+        raise exceptions.LoginRequiredException
 
     # img_id, user_id, server_time 를 wishlist table 에 넣기
-    try:
-        wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).values()
-        if len(wish_item)==0: #존재하지 않는 row -> 새로 table에 삽입
-            models.TbWishlistInfo.objects.create(user_id=user_id,img_id=img_id,server_time=server_time)
-        else: 
-            raise exceptions.AlreadyInWishlistException
-    
-        #사용자의 wishlist 정보 반환
-        user_total_wishlist = models.TbWishlistInfo.objects.filter(user_id=user_id).values("img_id")
-        user_wishlist = []
-        for wish in user_total_wishlist:
-            user_wishlist.append(wish["img_id"])
-    except: 
-       raise exceptions.DataBaseException
+    wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id)
+    if wish_item.exists(): 
+        raise exceptions.AlreadyInWishlistException
+    else:
+        #존재하지 않는 row -> 새로 table에 삽입
+        models.TbWishlistInfo.objects.create(user_id=user_id,img_id=img_id,server_time=server_time)
+
+    #사용자의 wishlist 정보 반환
+    user_total_wishlist = models.TbWishlistInfo.objects.filter(user_id=user_id).values("img_id")
+    user_wishlist = []
+    for wish in user_total_wishlist:
+        user_wishlist.append(wish["img_id"])
 
     #TODO: user log 추가
        
@@ -419,20 +429,22 @@ def set_wish_list(request):
 
     return Response(data)
 
-@csrf_exempt
-@api_view(["POST"])
+@api_view(["GET"])
 def del_wish_list(request):
-    access_token = request.META['HTTP_AUTHORIZATION']
-    body = json.loads(request.body.decode("utf-8"))
-    user_id = None if "user_id" not in body else body["user_id"]
-    img_id = None if "img_id" not in body else body["img_id"]
+    # get param
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
+    user_id = request.GET.get("user_id",None)
+    img_id = request.GET.get("img_id",None)
 
     # param check
-    if not user_id or not img_id:
+    if not img_id:
         raise exceptions.ParameterMissingException
     
     #valid user 인지 검사
-    check_token_isvalid(access_token,user_id)
+    validation = check_token_isvalid(access_token,user_id)
+    if validation == "not logged":
+        raise exceptions.LoginRequiredException
 
     # wishlist table 에서 삭제하기
     try:
@@ -455,7 +467,8 @@ def load_purchase_link(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # get params
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get("user_id",None)
     img_id = request.GET.get("img_id",None)
     upload_id = request.GET.get("upload_id",None)

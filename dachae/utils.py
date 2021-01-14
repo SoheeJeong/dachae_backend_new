@@ -107,6 +107,10 @@ def check_token_isvalid(access_token,user_id,restrict=True):
     '''
     if user_id==None and access_token==None:
         return "not logged"
+    
+    if (user_id and access_token) == None:
+        print(user_id,access_token)
+        raise exceptions.ParameterMissingException
 
     user = TbUserInfo.objects.filter(user_id=user_id)
     

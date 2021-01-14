@@ -15,7 +15,7 @@ from datetime import datetime
 
 from dachae.models import TbUserInfo,TbUserLog,TbUserAuth
 from dachae import exceptions
-from dachae.utils import age_range_calulator,get_expire_time_from_expires_in
+from dachae.utils import age_range_calulator,get_expire_time_from_expires_in,check_token_isvalid
 
 
 #TODO: service 구조로 refactoring
@@ -29,7 +29,8 @@ def set_signup(request):
     새로운 회원 회원가입 실행
     소셜로그인에서 넘어온 회원가입 페이지
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     body = json.loads(request.body.decode("utf-8"))
     #TODO: frontend에서 입력형식 체크 요청
     social_platform = body["social_platform"]
@@ -127,8 +128,6 @@ def set_login(request):
     카카오, 네이버 로그인
     '''
     # social_platform = request.POST.get("social_platform",None)
-    access_token = request.META['HTTP_AUTHORIZATION']
-    print(access_token)
     ###frontend 역할 -> TODO: 코드 제거
     # #1. 인증 코드 요청 (from frontend)
     # kakao_access_code = request.GET.get('code',None)
@@ -144,7 +143,8 @@ def set_login(request):
     # token_kakao_response = requests.post(url,headers=headers,data=body)
 
     ###여기부터 backend 역할
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     expires_in = request.GET.get("expires_in",None)
 
     if not access_token:
@@ -201,8 +201,15 @@ def set_logout(request):
     '''
     로그아웃
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get("user_id",None)
+
+    #valid user 인지 검사
+    validation = check_token_isvalid(access_token,user_id)
+    if validation == "not logged":
+        raise exceptions.LoginRequiredException
+
     #TODO: delete token
     # kakao logout
     # "https://kauth.kakao.com/oauth/logout?client_id={{logout_data.REST_API_KEY}}&logout_redirect_uri={{logout_data.LOGOUT_REDIRECT_URI}}"
@@ -216,7 +223,8 @@ def refresh_token(request):
     '''
     토큰갱신
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get("user_id",None)
     data = {"data":"temp"}
     return Response(data)
@@ -227,8 +235,15 @@ def set_withdrawal(request):
     '''
     회원탈퇴
     '''
-    access_token = request.META['HTTP_AUTHORIZATION']
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get("user_id",None)
+
+    #valid user 인지 검사
+    validation = check_token_isvalid(access_token,user_id)
+    if validation == "not logged":
+        raise exceptions.LoginRequiredException
+    
     data = {"data":"temp"}
     return Response(data)
 
@@ -237,5 +252,14 @@ def get_user_info(request):
     '''
     사용자 정보 가져오기
     '''
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
+    user_id = request.GET.get("user_id",None)
+
+    #valid user 인지 검사
+    validation = check_token_isvalid(access_token,user_id)
+    if validation == "not logged":
+        raise exceptions.LoginRequiredException
+
     data = {"data":"temp"}
     return Response(data)
