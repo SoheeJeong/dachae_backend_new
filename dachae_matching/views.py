@@ -65,6 +65,7 @@ def get_picture_filtered_result(request):
     '''
     body = json.loads(request.body.decode("utf-8"))
     label_list = body["label_list"]
+    usr_id = None if "user_id" not in body else body["user_id"]
 
     if len(label_list)==0:
         result_image_list = models.TbArtworkInfo.objects.values("img_path","img_id")
@@ -90,10 +91,10 @@ def get_picture_filtered_result(request):
             result_image_list[i]["img_path"] = s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
 
         #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
+    
+    #TODO: save into user log
 
     data = {
-        "result": "succ",
-        "msg": "메세지",
         "data" : result_image_list,
     }
     return Response(data)
