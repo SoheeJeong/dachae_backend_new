@@ -350,31 +350,36 @@ def exec_recommend(request):
 def set_wish_list(request):
     # server time 
     server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    access_token = request.META['HTTP_AUTHORIZATION']
     body = json.loads(request.body.decode("utf-8"))
-    user_id = body["user_id"]
-    img_id = body["img_id"]
+    user_id = None if "user_id" not in body else body["user_id"]
+    img_id = None if "img_id" not in body else body["img_id"]
 
-    #TODO: valid user 인지 token 검사-토큰 만료 검사
-    
-    if not user_id or not img_id:
+    # param check
+    if not user_id or not img_id or not access_token:
         raise exceptions.ParameterMissingException
     
+    # valid user 인지 검사
+    check_token_isvalid(access_token,user_id)
+
     # img_id, user_id, server_time 를 wishlist table 에 넣기
-    #try:
-    wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).values()
-    if len(wish_item)==0: #존재하지 않는 row -> 새로 table에 삽입
-        models.TbWishlistInfo.objects.create(user_id=user_id,img_id=img_id,server_time=server_time)
-    else: 
-        raise exceptions.AlreadyInWishlistException
-    #except: 
-    #   raise DataBaseException
+    try:
+        wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).values()
+        if len(wish_item)==0: #존재하지 않는 row -> 새로 table에 삽입
+            models.TbWishlistInfo.objects.create(user_id=user_id,img_id=img_id,server_time=server_time)
+        else: 
+            raise exceptions.AlreadyInWishlistException
+    
+        #사용자의 wishlist 정보 반환
+        user_total_wishlist = models.TbWishlistInfo.objects.filter(user_id=user_id).values("img_id")
+        user_wishlist = []
+        for wish in user_total_wishlist:
+            user_wishlist.append(wish["img_id"])
+    except: 
+       raise exceptions.DataBaseException
 
-    #사용자의 wishlist 정보 반환
-    user_total_wishlist = models.TbWishlistInfo.objects.filter(user_id=user_id).values("img_id")
-    user_wishlist = []
-    for wish in user_total_wishlist:
-        user_wishlist.append(wish["img_id"])
-
+    #TODO: user log 추가
+       
     data = {
             "result": "succ",
             "msg": "메세지",
@@ -386,16 +391,17 @@ def set_wish_list(request):
 @csrf_exempt
 @api_view(["POST"])
 def del_wish_list(request):
+    access_token = request.META['HTTP_AUTHORIZATION']
     body = json.loads(request.body.decode("utf-8"))
-    user_id = body["user_id"]
-    img_id = body["img_id"]
-    access_token = body["access_token"]
+    user_id = None if "user_id" not in body else body["user_id"]
+    img_id = None if "img_id" not in body else body["img_id"]
 
     # param check
     if not user_id or not img_id:
         raise exceptions.ParameterMissingException
     
-    #TODO: valid user 인지 token 검사-토큰 만료 검사
+    #valid user 인지 검사
+    check_token_isvalid(access_token,user_id)
 
     # wishlist table 에서 삭제하기
     try:
@@ -406,9 +412,10 @@ def del_wish_list(request):
     except: 
         raise exceptions.DataBaseException
 
+    #TODO: user log 추가
+
     data = {
-            "result": "succ",
-            "msg": "메세지"
+            "result": "succ"
             }
     return Response(data)
 
