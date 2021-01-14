@@ -16,7 +16,7 @@ from .matching import GetImageColor, Recommendation
 from dachae import models
 from dachae import exceptions
 
-from dachae.utils import S3Connection,check_token_isvalid
+from dachae.utils import S3Connection,check_token_isvalid,get_random_string
 
 s3connection = S3Connection()
 
@@ -205,14 +205,17 @@ def set_user_image_upload(request):
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise exceptions.WrongFileFormatException
 
-    # token_validation = check_token_isvalid(access_token,user_id)
-
     #파일 저장 
     try:
         #백엔드에 사용자 업로드 이미지 저장
         #TODO: 로그인 안된 사용자의 경우 파일명 어떻게 지정? servertime+난수?
-        filename = server_time + user_id + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
-        save_path = os.path.join(user_id, filename)
+        if user_id:
+            filename = server_time + user_id + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
+            save_path = os.path.join(user_id, filename)
+        else:
+            rand_str = get_random_string(8)
+            filename = server_time + rand_str + upload_files[0].name 
+            save_path = os.path.join(rand_str, filename)
         default_storage.save(save_path, upload_files[0])
         file_addr = os.path.join(settings.MEDIA_ROOT,save_path)
 
@@ -232,7 +235,10 @@ def set_user_image_upload(request):
             exceptions.DataBaseException
 
         #백엔드에서 삭제
-        shutil.rmtree(os.path.join(settings.MEDIA_ROOT,user_id)) #user folder 전체를 삭제
+        if user_id:
+            shutil.rmtree(os.path.join(settings.MEDIA_ROOT,user_id)) #user folder 전체를 삭제
+        else:
+            shutil.rmtree(os.path.join(settings.MEDIA_ROOT,rand_str))
         #default_storage.delete(upload_file_path) #업로드 file만 삭제
         
         #TODO: save into user log

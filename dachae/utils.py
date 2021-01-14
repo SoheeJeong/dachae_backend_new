@@ -152,3 +152,11 @@ def get_expire_time_from_expires_in(expires_in):
     ts = datetime.now() + datetime.timedelta(seconds=expires_in)
     expire_time = ts.strftime('%Y-%m-%d %H:%M:%S')
     return expire_time
+
+import random
+import string
+
+def get_random_string(length):
+    letters = string.ascii_lowercase
+    result_str = ''.join(random.choice(letters) for i in range(length))
+    return result_str
