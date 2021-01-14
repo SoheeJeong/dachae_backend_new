@@ -43,15 +43,18 @@ def get_best_image_list(request):
     start = request.GET.get("start",0)  
     end = request.GET.get("end",None)  
 
-    best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","img_id")
-    end = len(best_image_list) if not end else min(len(best_image_list),int(end)+1)
-    data_list = best_image_list[int(start):end+1]
-    #s3 path 로 바꾸기
-    for i in range(len(data_list)):
-        img_key = data_list[i]["sample_path"]
-        print(img_key)
-        data_list[i]["sample_path"] = s3connection.get_presigned_url(SAMPLE_BUCKET_NAME,img_key)
-
+    try:
+        best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","img_id")
+        end = len(best_image_list) if not end else min(len(best_image_list),int(end)+1)
+        data_list = best_image_list[int(start):end+1]
+        #s3 path 로 바꾸기
+        for i in range(len(data_list)):
+            img_key = data_list[i]["sample_path"]
+            print(img_key)
+            data_list[i]["sample_path"] = s3connection.get_presigned_url(SAMPLE_BUCKET_NAME,img_key)
+    except:
+        raise exceptions.DataBaseException
+    
     data = {
             "data" : data_list,
             }
@@ -66,6 +69,8 @@ def get_picture_filtered_result(request):
     body = json.loads(request.body.decode("utf-8"))
     label_list = body["label_list"]
     usr_id = None if "user_id" not in body else body["user_id"]
+    
+    #TODO: 로그인된 사용자인지 검사
 
     if len(label_list)==0:
         result_image_list = models.TbArtworkInfo.objects.values("img_path","img_id")
