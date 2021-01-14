@@ -53,8 +53,6 @@ def get_best_image_list(request):
         data_list[i]["sample_path"] = s3connection.get_presigned_url(SAMPLE_BUCKET_NAME,img_key)
 
     data = {
-            "result": "succ",
-            "msg": "메세지",
             "data" : data_list,
             }
     return Response(data)
