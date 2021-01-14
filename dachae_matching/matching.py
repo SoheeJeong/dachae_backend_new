@@ -118,7 +118,7 @@ class GetImageColor():
         plt.axis('on')
         plt.imshow(bar)
         #backend에 임시 저장 후 경로 반환
-        save_path = settings.MEDIA_ROOT+'clt/clusering_result.png'
+        save_path = settings.MEDIA_ROOT+'clt/clusering_result.jpg'
         plt.savefig(save_path)
         return save_path
 

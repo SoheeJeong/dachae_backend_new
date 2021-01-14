@@ -73,6 +73,10 @@ class DataBaseException(APIException):
     status_code = 500
     default_detail = "Database Error"
 
+class RecommendationException(APIException):
+    status_code = 500
+    default_detail = "Error occured during recommendation"
+
 
 class AlreadyInWishlistException(APIException):
     status_code = 403

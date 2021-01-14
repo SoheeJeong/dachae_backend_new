@@ -101,7 +101,10 @@ def age_range_calulator(birthday_date):
 
 
 
-def check_token_isvalid(access_token,user_id):
+def check_token_isvalid(access_token,user_id,restrict=True):
+    '''
+    로그인이 필요없는 기능인 경우 restrict=False 로 설정
+    '''
     if user_id==None and access_token==None:
         return "not logged"
 
@@ -110,6 +113,8 @@ def check_token_isvalid(access_token,user_id):
     if user.exists():
         #토큰이 존재하지 않음
         if access_token == None:
+            if not restrict:
+                return "no token"
             raise exceptions.NotTokenInfoException #다시 로그인해주세요
 
         user_info = user.values("state")[0]
@@ -118,19 +123,27 @@ def check_token_isvalid(access_token,user_id):
         
         #인증토큰 불일치
         if access_token != userauth_info["access_token"]:
+            if not restrict:
+                return "invalid token"
             raise exceptions.InvalidAccessTokenException
         #expire time이 지남
         elif userauth_info["expire_time"] <= datetime.now():
+            if not restrict:
+                return "expired token"
             raise exceptions.ExpiredAccessTokenException
 
-        #TODO: check user status (휴면,탈퇴여부) -> 적절한 exception 
+        # check user status (휴면,탈퇴여부)
         if user_info["state"] == "withdrawn":
+            if not restrict:
+                return "withdrawn"
             raise exceptions.LeftMemberException
         elif user_info["state"] == "dormant":
-            raise exceptions.DormantMemberException
-        
+            if not restrict:
+                return "dormant"
+            raise exceptions.DormantMemberException        
     else:
-        # return "no user exists"
+        if not restrict:
+            return "no user exists"
         raise exceptions.InvalidUserIdException
 
     return "valid user"

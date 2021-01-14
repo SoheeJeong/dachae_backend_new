@@ -209,6 +209,7 @@ def set_user_image_upload(request):
     #파일 저장 
     try:
         #백엔드에 사용자 업로드 이미지 저장
+        #TODO: 로그인 안된 사용자의 경우 파일명 어떻게 지정? servertime+난수?
         filename = server_time + user_id + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
         save_path = os.path.join(user_id, filename)
         default_storage.save(save_path, upload_files[0])
@@ -253,11 +254,12 @@ def exec_recommend(request):
     '''
     매칭 수행
     '''
+    access_token = request.META['HTTP_AUTHORIZATION']
     body = json.loads(request.body.decode("utf-8"))
-    user_id = body["user_id"]
-    room_img = body["room_img"]
+    user_id = None if "user_id" not in body else body["user_id"]
+    room_img = None if "room_img" not in body else body["room_img"] 
 
-    if not user_id or not room_img:
+    if not room_img:
         raise exceptions.ParameterMissingException
 
     label_list = body["label_list"]
@@ -275,42 +277,53 @@ def exec_recommend(request):
     upload_object = models.TbUploadInfo.objects.filter(user_id=user_id,room_img=room_img)
     if not upload_object.exists():
         raise exceptions.DataBaseException
-    room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img)
 
     #load artwork data
     pic_data = models.TbArtworkInfo.objects.values('img_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
 
     #exec recommend
-    getimgcolor = GetImageColor(room_img_url)
-    clt =  getimgcolor.get_meanshift() #room color clt with meanshift
-    clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
-
-    #save clustering result into s3 storage
-    clt_key = CLUSTER_FOLDER_NAME + room_img
-    s3connection.upload_file_into_s3(clt_path,CLUSTER_BUCKET_NAME,clt_key)
-    clt_url = s3connection.get_presigned_url(CLUSTER_BUCKET_NAME,clt_key)
-
-    #TODO: 예외처리 추가
-    #clustering result 사진 삭제
-    os.remove(clt_path)
-
-    #선택된 label과 clustering 결과 이미지 path를 models.Tb_upload_info에 저장
     try:
-        upload_object.update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
-    except:
-        raise exceptions.DataBaseException
+        room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img)
+        getimgcolor = GetImageColor(room_img_url)
+        clt =  getimgcolor.get_meanshift() #room color clt with meanshift
+        clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
 
-    analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
+        #save clustering result into s3 storage
+        clt_key = CLUSTER_FOLDER_NAME + room_img
+        s3connection.upload_file_into_s3(clt_path,CLUSTER_BUCKET_NAME,clt_key)
+        clt_url = s3connection.get_presigned_url(CLUSTER_BUCKET_NAME,clt_key)
+
+        #clustering result 사진 삭제
+        os.remove(clt_path)
+
+        #선택된 label과 clustering 결과 이미지 path를 models.Tb_upload_info에 저장
+        try:
+            upload_object.update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
+        except:
+            raise exceptions.DataBaseException
+
+        analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
+    except:
+        raise exceptions.RecommendationException
     
     #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list)
     #matching.py 에서 아얘 라벨 필터링까지 한 결과를 반환하도록 할지? 아니면 여기서 필터링할지?
+    
+    user_status = check_token_isvalid(access_token,user_id,False)
+    if user_status == "no user exists":
+        show_range = "part"
+    else:
+        #TODO: user log 추가
+        if user_status == "valid user":
+            show_range = "all"
+        else:
+            show_range = "part"
 
     data = {
-        'result':'succ',
-        'msg':'message',
+        'show_range':show_range,
         'upload_id':upload_object.values("upload_id")[0]["upload_id"],
-        'room_img':room_img_url,
-        'clustering_result':clt_url,
+        'room_img_url':room_img_url,
+        'clustering_result_url':clt_url,
         'chosen_label':label_nm_list,
         'recommend_images':{
             'analog':analog['img_path'],
