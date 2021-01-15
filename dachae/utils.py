@@ -5,10 +5,10 @@ from botocore.client import Config
 from botocore.errorfactory import ClientError
 import datetime
 
-from .models import TbUserAuth,TbUserInfo
+from .models import TbUserAuth,TbUserInfo,TbArtworkInfo
 import dachae.exceptions as exceptions
 
-#TODO: expiration time 줄이기
+#TODO: expiration time 줄이기?
 
 class S3Connection():
     def __init__(self):
@@ -49,6 +49,30 @@ class S3Connection():
             return "AWS S3 connection failed"
 
         return url
+
+    def convert_recommended_img_path_into_s3_path(self,recommend_results):
+        analog,comp,mono = recommend_results
+        ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
+
+        for i in range(len(analog)):
+            img_key = analog[i]["img_path"].values[0]
+            del analog[i]["img_path"]
+            analog[i].update({
+                "img_path": self.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+            })
+        for i in range(len(comp)):
+            img_key = comp[i]["img_path"].values[0]
+            del comp[i]["img_path"]
+            comp[i].update({
+                "img_path": self.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+                })
+        for i in range(len(mono)):
+            img_key = mono[i]["img_path"].values[0]
+            del mono[i]["img_path"]
+            mono[i].update({
+                "img_path": self.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+                })
+        return analog,comp,mono
 
     def upload_file_into_s3(self,filepath,bucket,key):
         try:
@@ -119,7 +143,7 @@ def check_token_isvalid(access_token,user_id,restrict=True):
         if access_token == None:
             if not restrict:
                 return "no token"
-            raise exceptions.NotTokenInfoException #다시 로그인해주세요
+            raise exceptions.ParameterMissingException
 
         user_info = user.values("state")[0]
 
@@ -157,10 +181,36 @@ def get_expire_time_from_expires_in(expires_in):
     expire_time = ts.strftime('%Y-%m-%d %H:%M:%S')
     return expire_time
 
-import random
-import string
-
 def get_random_string(length):
+    import random
+    import string
     letters = string.ascii_lowercase
     result_str = ''.join(random.choice(letters) for i in range(length))
     return result_str
+
+def get_label_filtered_result(label_list,matching_result=None):
+    """
+    선택된 라벨인 label_list 가 포함된 이미지의 합집합을 반환한다.
+    이미지에 선택된 라벨이 몇개가 포함되었는지(count)와 어떤 라벨인지(label list)도 도출한다.
+    execRecommend 와 getPictureFilteredResult 에서 사용된다.
+    """
+    #execrecommend
+    if matching_result:
+        analog,comp,mono = matching_result
+        return analog,comp,mono
+    else:
+        label_query = None
+        #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork object들의 합집합
+        for label_dict in label_list: 
+            #TODO: artwork 별로 몇개의 라벨이 포함되어 있는지 count 정보 저장 필요. 이 기준으로 sorting 필요.
+            label1_check = TbArtworkInfo.objects.filter(label1_id=label_dict["label_id"])
+            label2_check = TbArtworkInfo.objects.filter(label2_id=label_dict["label_id"])
+            label3_check = TbArtworkInfo.objects.filter(label3_id=label_dict["label_id"])
+            if label_query:
+                label_query = label_query.union(label1_check,label2_check,label3_check)
+            else:
+                label_query = label1_check.union(label2_check,label3_check)
+
+        #TODO: order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
+        result_image_list = label_query.order_by("img_id").values("img_path","img_id")
+        return result_image_list

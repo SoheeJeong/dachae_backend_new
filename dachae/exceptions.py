@@ -32,23 +32,9 @@ class ExpiredAccessTokenException(APIException):
     status_code = 401
     default_detail = "Access Token이 만료되었습니다."
 
-
-class ExpirationRefreshTokenException(APIException):
-    status_code = 401
-    default_detail = "Refresh Token이 만료되었습니다. 다시 로그인해주세요."
-
-
-class NotTokenInfoException(APIException):
-    status_code = 401
-    default_detail = "다시 로그인해주세요."
-
 class ParameterMissingException(APIException):
     status_code = 401
     default_detail = "필요한 parameter 가 전달되지 않았습니다."
-
-class NoCompanyInfoException(APIException):
-    status_code = 401
-    default_detail = "해당 이미지의 판매처 정보가 존재하지 않습니다."
 
 class NoProductInfoException(APIException):
     status_code = 401
@@ -79,17 +65,7 @@ class DataBaseException(APIException):
 
 class RecommendationException(APIException):
     status_code = 500
-    default_detail = "Error occured during recommendation"
-
-
-class AlreadyInWishlistException(APIException):
-    status_code = 403
-    default_detail = "이미 위시리스트에 있는 항목입니다."
-
-class NotInWishlistException(APIException):
-    status_code = 403
-    default_detail = "위시리스트에 없는 항목입니다. 삭제할 수 없습니다."
-
+    default_detail = "추천 중 오류가 발생했습니다."
 
 class NoFileUploadedException(APIException):
     status_code = 403

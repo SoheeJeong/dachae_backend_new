@@ -16,7 +16,7 @@ from .matching import GetImageColor, Recommendation
 from dachae import models
 from dachae import exceptions
 
-from dachae.utils import S3Connection,check_token_isvalid,get_random_string
+from dachae.utils import S3Connection,check_token_isvalid,get_random_string,get_label_filtered_result
 
 s3connection = S3Connection()
 
@@ -70,6 +70,7 @@ def get_picture_filtered_result(request):
     '''
     키워드 및 느낌라벨로 명화 검색
     '''
+    #TODO: 라벨 최소개수 1개 지정
     header = request.headers
     access_token = header['Authorization'] if 'Authorization' in header else None
     body = json.loads(request.body.decode("utf-8"))
@@ -84,18 +85,7 @@ def get_picture_filtered_result(request):
 
     else:
         #TODO: filter 기준 정립 필요
-        #label_query 초기화 - empty result
-        first_label = label_list[0]["label_id"]
-        label_query = models.TbArtworkInfo.objects.filter(label1_id=first_label,label2_id=first_label,label3_id=first_label) 
-        #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork object들의 합집합
-        for label_dict in label_list: 
-            #TODO: artwork 별로 몇개의 라벨이 포함되어 있는지 count 정보 저장 필요. 이 기준으로 sorting 필요.
-            label_query = label_query.union(models.TbArtworkInfo.objects.filter(label1_id=label_dict["label_id"]))
-            label_query = label_query.union(models.TbArtworkInfo.objects.filter(label2_id=label_dict["label_id"]))
-            label_query = label_query.union(models.TbArtworkInfo.objects.filter(label3_id=label_dict["label_id"]))
-
-        #TODO: order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
-        result_image_list = label_query.order_by("img_id").values("img_path","img_id")
+        result_image_list = get_label_filtered_result(label_list)
         
     #s3 파일 경로 얻기
     for i in range(len(result_image_list)):
@@ -138,7 +128,7 @@ def get_picture_detail_info(request):
         if company_info.exists():
             company_nm = models.TbCompanyInfo.objects.filter(company_id=company_info[0]["company_id"]).values("company_nm")
         else:
-            raise exceptions.NoCompanyInfoException
+            raise exceptions.NoProductInfoException
         
         image_data.update(company_info[0])
         image_data.update(company_nm[0])
@@ -328,7 +318,7 @@ def exec_recommend(request):
         raise exceptions.DataBaseException
 
     #load artwork data
-    pic_data = models.TbArtworkInfo.objects.values('img_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path')
+    pic_data = models.TbArtworkInfo.objects.values('img_id','img_path','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','label1_id','label2_id','label3_id')
 
     #exec recommend
     try:
@@ -350,32 +340,15 @@ def exec_recommend(request):
             upload_object.update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
         except:
             raise exceptions.DataBaseException
-
-        analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
+        
+        recommendation = Recommendation(clt,pic_data)
+        analog,comp,mono = s3connection.convert_recommended_img_path_into_s3_path(recommendation.recommend_pic())
     except:
         raise exceptions.RecommendationException
 
-    for i in range(len(analog)):
-        img_key = analog[i]["img_path"].values[0]
-        del analog[i]["img_path"]
-        analog[i].update({
-            "img_path": s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
-            })
-    for i in range(len(comp)):
-        img_key = comp[i]["img_path"].values[0]
-        del comp[i]["img_path"]
-        comp[i].update({
-            "img_path": s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
-            })
-    for i in range(len(mono)):
-        img_key = mono[i]["img_path"].values[0]
-        del mono[i]["img_path"]
-        mono[i].update({
-            "img_path": s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
-            })
-    
-    #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list)
-    #matching.py 에서 아얘 라벨 필터링까지 한 결과를 반환하도록 할지? 아니면 여기서 필터링할지?
+
+    #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list) -> count, label_list
+    analog, comp, mono = get_label_filtered_result(label_list,(analog,comp,mono))
     
     if user_id:
         #TODO: user log 추가
@@ -425,10 +398,8 @@ def set_wish_list(request):
 
     # img_id, user_id, server_time 를 wishlist table 에 넣기
     wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id)
-    if wish_item.exists(): 
-        raise exceptions.AlreadyInWishlistException
-    else:
-        #존재하지 않는 row -> 새로 table에 삽입
+    if not wish_item.exists(): 
+        #존재하지 않는 row 일 경우에만 -> 새로 table에 삽입
         models.TbWishlistInfo.objects.create(user_id=user_id,img_id=img_id,server_time=server_time)
 
     #사용자의 wishlist 정보 반환
@@ -466,10 +437,9 @@ def del_wish_list(request):
 
     # wishlist table 에서 삭제하기
     try:
-        wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).values()
-        if len(wish_item)==0: #존재하지 않는 item
-            raise exceptions.NotInWishlistException
-        models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).delete() #삭제 수행
+        wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id)
+        if wish_item.exists(): #존재하는 item일 경우에만
+            models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).delete() #삭제 수행
     except: 
         raise exceptions.DataBaseException
 

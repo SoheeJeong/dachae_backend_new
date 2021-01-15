@@ -125,7 +125,8 @@ class GetImageColor():
 class Recommendation():
     def __init__(self,clt,data):
         self.clt = clt
-        self.data = data # crawling data 전체 list
+        # data 전체
+        self.df = pd.DataFrame(data, columns =['img_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path','label1_id','label2_id','label3_id'])
 
     def revised_rgb_to_hsv(self,r,g,b):
         (h, s, v) = colorsys.rgb_to_hsv(r/255, g/255, b/255)
@@ -141,17 +142,15 @@ class Recommendation():
         return list1
 
     def recommend_pic(self): 
-        #convert tuple into dataframe
-        df = pd.DataFrame(self.data, columns =['img_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path'])
-        #print('df:',df)
-        analog_title_temp, analog_img_temp = [],[]
-        compl_title_temp, compl_img_temp = [],[]
-        mono_title_temp, mono_img_temp = [],[]
-        
-        #TODO : change return type. ex) analog=[{img id,img_path(presigned uri path),count,label_list}, ...]
-        # return 용 빈 list 생성
+        """
+        # 유사색의 명화 추천
+        roomcolor_analog(유사색) : h는 +-30도(!=0) (AND) s는동일 v는 +-5 
+        # 보색의 명화 추천
+        roomcolor_compl(보색): h는 +-180도 (AND) s와v는 +-5
+        # 단색의 명화 추천
+        roomcolor_mono(단색) : h는 동일 (AND) s는 +-10, v는 고려하지 않음
+        """
         df_analog, df_compl, df_mono = [], [], []
-
         for i in range(1,4): 
             for center in self.clt.cluster_centers_:
                 h,s,v = Recommendation.revised_rgb_to_hsv(self,center[0],center[1],center[2])
@@ -159,27 +158,18 @@ class Recommendation():
                 s=int(s)
                 v=int(v)
 
-                """
-                # 유사색의 명화 추천
-                roomcolor_analog(유사색) : h는 +-30도(!=0) (AND) s는동일 v는 +-5 
-                # 보색의 명화 추천
-                roomcolor_compl(보색): h는 +-180도 (AND) s와v는 +-5
-                # 단색의 명화 추천
-                roomcolor_mono(단색) : h는 동일 (AND) s는 +-10, v는 고려하지 않음
-                """
-                roomcolor_analog= (abs(df['h'+str(i)]-h)!=0)&(abs(df['h'+str(i)]-h)<=30)&(abs(df['s'+str(i)]-s)==0)&(abs(df['v'+str(i)]-v)<=5)
-                roomcolor_compl=(abs(df['h'+str(i)]-h)==180)&(abs(df['s'+str(i)]-s)<=5)&(abs(df['v'+str(i)]-v)<=5)
-                roomcolor_mono=(df['h'+str(i)]==h)&(abs(df['s'+str(i)]-s)<=10)
+                roomcolor_analog= (abs(self.df['h'+str(i)]-h)!=0)&(abs(self.df['h'+str(i)]-h)<=30)&(abs(self.df['s'+str(i)]-s)==0)&(abs(self.df['v'+str(i)]-v)<=5)
+                roomcolor_compl=(abs(self.df['h'+str(i)]-h)==180)&(abs(self.df['s'+str(i)]-s)<=5)&(abs(self.df['v'+str(i)]-v)<=5)
+                roomcolor_mono=(self.df['h'+str(i)]==h)&(abs(self.df['s'+str(i)]-s)<=10)
 
-                # 중복을 방지하기 위해 dictionary 로 바꿨다가 다시 list로 변환, append
                 #유사색
-                if len(df[roomcolor_analog]['img_path']):
-                    df_analog.append( dict(df[roomcolor_analog][['img_id','img_path']]) )
+                if len(self.df[roomcolor_analog]['img_path']):
+                    df_analog.append( dict(self.df[roomcolor_analog][['img_id','img_path']]) )
                 #보색
-                if len(df[roomcolor_compl]['img_path']):
-                    df_compl.append( dict(df[roomcolor_compl][['img_id','img_path']]) )
+                if len(self.df[roomcolor_compl]['img_path']):
+                    df_compl.append( dict(self.df[roomcolor_compl][['img_id','img_path']]) )
                 #단색
-                if len(df[roomcolor_mono]['img_path']):
-                    df_mono.append( dict(df[roomcolor_mono][['img_id','img_path']]) )
+                if len(self.df[roomcolor_mono]['img_path']):
+                    df_mono.append( dict(self.df[roomcolor_mono][['img_id','img_path']]) )
                 
         return df_analog ,df_compl,df_mono   
