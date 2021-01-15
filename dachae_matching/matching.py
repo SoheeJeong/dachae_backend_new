@@ -172,4 +172,7 @@ class Recommendation():
                 if len(self.df[roomcolor_mono]['img_path']):
                     df_mono.append( dict(self.df[roomcolor_mono][['img_id','img_path']]) )
                 
+
+        
+        
         return df_analog ,df_compl,df_mono   
