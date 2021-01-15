@@ -30,7 +30,6 @@ CLUSTER_FOLDER_NAME = os.getenv("CLUSTER_FOLDER_NAME")
 SAMPLE_BUCKET_NAME = os.getenv("SAMPLE_BUCKET_NAME")
 
 #TODO: service 구조로 refactoring
-#TODO: 필요한곳에 권한체크 추가 - 찜, 구매
 #TODO: 예외처리 체크
 
 ##### 검색, 업로드, 매칭 #####
@@ -355,6 +354,25 @@ def exec_recommend(request):
         analog,comp,mono = Recommendation(clt,pic_data).recommend_pic() #recommended images list
     except:
         raise exceptions.RecommendationException
+
+    for i in range(len(analog)):
+        img_key = analog[i]["img_path"].values[0]
+        del analog[i]["img_path"]
+        analog[i].update({
+            "img_path": s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+            })
+    for i in range(len(comp)):
+        img_key = comp[i]["img_path"].values[0]
+        del comp[i]["img_path"]
+        comp[i].update({
+            "img_path": s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+            })
+    for i in range(len(mono)):
+        img_key = mono[i]["img_path"].values[0]
+        del mono[i]["img_path"]
+        mono[i].update({
+            "img_path": s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+            })
     
     #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list)
     #matching.py 에서 아얘 라벨 필터링까지 한 결과를 반환하도록 할지? 아니면 여기서 필터링할지?
@@ -372,10 +390,10 @@ def exec_recommend(request):
         'room_img_url':room_img_url,
         'clustering_result_url':clt_url,
         'chosen_label':label_nm_list,
-        'recommend_images':{
-            'analog':analog['img_path'],
-            'comp':comp['img_path'],
-            'mono':mono['img_path']   
+        'recommend_images':{ #img id,img_path(presigned uri path),count,label_list
+            'analog':analog,
+            'comp':comp,
+            'mono':mono   
         }
     }
     return Response(data)
@@ -472,10 +490,6 @@ def load_purchase_link(request):
     user_id = request.GET.get("user_id",None)
     img_id = request.GET.get("img_id",None)
     upload_id = request.GET.get("upload_id",None)
-    # body = json.loads(request.body.decode("utf-8"))
-    # user_id = None if "user_id" not in body else body["user_id"]
-    # img_id = None if "img_id" not in body else body["img_id"]    
-    # upload_id = None if "upload_id" not in body else body["upload_id"]
 
     # param check
     if not img_id:

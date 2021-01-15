@@ -142,13 +142,16 @@ class Recommendation():
 
     def recommend_pic(self): 
         #convert tuple into dataframe
-        df = pd.DataFrame(self.data, columns =['image_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path'])
+        df = pd.DataFrame(self.data, columns =['img_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path'])
         #print('df:',df)
         analog_title_temp, analog_img_temp = [],[]
         compl_title_temp, compl_img_temp = [],[]
         mono_title_temp, mono_img_temp = [],[]
         
-        #TODO : change return type (array[dict,dict,..])
+        #TODO : change return type. ex) analog=[{img id,img_path(presigned uri path),count,label_list}, ...]
+        # return 용 빈 list 생성
+        df_analog, df_compl, df_mono = [], [], []
+
         for i in range(1,4): 
             for center in self.clt.cluster_centers_:
                 h,s,v = Recommendation.revised_rgb_to_hsv(self,center[0],center[1],center[2])
@@ -157,8 +160,8 @@ class Recommendation():
                 v=int(v)
 
                 """
-                # 비슷한 색감의 명화 추천
-                roomcolor_analog(비슷한 색감) : h는 +-30도(!=0) (AND) s는동일 v는 +-5 
+                # 유사색의 명화 추천
+                roomcolor_analog(유사색) : h는 +-30도(!=0) (AND) s는동일 v는 +-5 
                 # 보색의 명화 추천
                 roomcolor_compl(보색): h는 +-180도 (AND) s와v는 +-5
                 # 단색의 명화 추천
@@ -171,33 +174,12 @@ class Recommendation():
                 # 중복을 방지하기 위해 dictionary 로 바꿨다가 다시 list로 변환, append
                 #유사색
                 if len(df[roomcolor_analog]['img_path']):
-                    analog_title_temp = self.list_append_only_values(analog_title_temp,list( dict.fromkeys(df[roomcolor_analog]['title'].values,)))
-                    analog_img_temp = self.list_append_only_values(analog_img_temp,list( dict.fromkeys(df[roomcolor_analog]['img_path'].values,)))
+                    df_analog.append( dict(df[roomcolor_analog][['img_id','img_path']]) )
                 #보색
                 if len(df[roomcolor_compl]['img_path']):
-                    compl_title_temp = self.list_append_only_values(compl_title_temp,list( dict.fromkeys(df[roomcolor_compl]['title'].values,)))
-                    compl_img_temp = self.list_append_only_values(compl_img_temp,list( dict.fromkeys(df[roomcolor_compl]['img_path'].values,)))
+                    df_compl.append( dict(df[roomcolor_compl][['img_id','img_path']]) )
                 #단색
                 if len(df[roomcolor_mono]['img_path']):
-                    mono_title_temp = self.list_append_only_values(mono_title_temp,list( dict.fromkeys(df[roomcolor_mono]['title'].values,)))
-                    mono_img_temp = self.list_append_only_values(mono_img_temp,list( dict.fromkeys(df[roomcolor_mono]['img_path'].values,)))
+                    df_mono.append( dict(df[roomcolor_mono][['img_id','img_path']]) )
                 
-        df_analog, df_compl, df_mono = {},{},{}
-        
-        #유사색-추천받은 명화      
-        df_analog={
-            'title': analog_title_temp,
-            'img_path': analog_img_temp
-            }  
-        #보색-추천받은 명화
-        df_compl={
-            'title': compl_title_temp,
-            'img_path': compl_img_temp
-            }
-        #단색-추천받은 명화
-        df_mono={
-            'title': mono_title_temp,
-            'img_path': mono_img_temp
-            }
-                
-        return df_analog,df_compl,df_mono   
+        return df_analog ,df_compl,df_mono   
