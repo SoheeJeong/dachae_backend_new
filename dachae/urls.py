@@ -27,8 +27,8 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('admin/', admin.site.urls),
     #path('swagger/',schema_view.with_ui(cache_timeout=0),name='swagger'),
-    path('user/',include(dachae_common.urls,namespace='common')),
-    path('dachae/',include(dachae_matching.urls,namespace='macthing'))
+    path('api/user/',include(dachae_common.urls,namespace='common')),
+    path('api/dachae/',include(dachae_matching.urls,namespace='macthing'))
 ]
 
 if settings.DEBUG:
