@@ -21,6 +21,21 @@ class S3Connection():
         # S3 client
         self.s3_client = boto3.client('s3',**AWS_S3_CREDS)
 
+    def save_file_into_s3(self,filepath,bucket,key):
+        try:
+            self.s3_client.upload_file(filepath,bucket,key)
+        except:
+            raise exceptions.StorageConnectionException
+        return key
+
+    # def upload_file_into_s3(self,filepath,bucket,key):
+    #     try:
+    #         transfer = S3Transfer(self.s3_client)
+    #         transfer.upload_file(filepath,bucket,key)
+    #     except:
+    #         return None
+    #     return key
+
     def get_presigned_url(self,bucket,key,expiration=3600):
         """Generate a presigned URL to share an S3 object
 
@@ -74,13 +89,6 @@ class S3Connection():
                 })
         return analog,comp,mono
 
-    def upload_file_into_s3(self,filepath,bucket,key):
-        try:
-            transfer = S3Transfer(self.s3_client)
-            transfer.upload_file(filepath,bucket,key)
-        except:
-            return None
-        return key
 
      # def download_file_from_s3(savepath,bucket,key):
         #     try:
