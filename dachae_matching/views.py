@@ -59,6 +59,7 @@ def get_best_image_list(request):
         raise exceptions.DataBaseException
     
     data = {
+            'data2':'https://dachaeartwork.s3.ap-northeast-2.amazonaws.com/samplematching/IMG_2487.PNG',
             "data" : data_list,
             }
     return Response(data)
@@ -332,7 +333,7 @@ def exec_recommend(request):
 
         #save clustering result into s3 storage
         clt_key = CLUSTER_FOLDER_NAME + room_img
-        s3connection.upload_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
+        s3connection.save_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
         clt_url = s3connection.get_presigned_url(USER_BUCKET_NAME,clt_key)
 
         #clustering result 사진 삭제
