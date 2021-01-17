@@ -13,8 +13,8 @@ import dachae.exceptions as exceptions
 class S3Connection():
     def __init__(self):
         AWS_S3_CREDS = {
-            "aws_access_key_id": os.getenv("AWS_ACCESS_KEY"),
-            "aws_secret_access_key":os.getenv("AWS_SECRET_KEY"),
+            "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_REMOTE"), 
+            "aws_secret_access_key":os.getenv("AWS_SECRET_KEY_REMOTE"),
             "config" : Config(signature_version='s3v4'),
             "region_name" : 'ap-northeast-2'
         }
