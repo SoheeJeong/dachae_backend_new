@@ -25,9 +25,8 @@ ARTWORK_LABEL_NUM = 3 #명화 1개당 라벨 개수
 
 ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
 USER_BUCKET_NAME = os.getenv("USER_BUCKET_NAME")
-CLUSTER_BUCKET_NAME = os.getenv("CLUSTER_BUCKET_NAME")
 CLUSTER_FOLDER_NAME = os.getenv("CLUSTER_FOLDER_NAME")
-SAMPLE_BUCKET_NAME = os.getenv("SAMPLE_BUCKET_NAME")
+SAMPLE_FOLDER_NAME = os.getenv("SAMPLE_FOLDER_NAME")
 
 #TODO: service 구조로 refactoring
 #TODO: 예외처리 체크
@@ -55,7 +54,7 @@ def get_best_image_list(request):
         #s3 path 로 바꾸기
         for i in range(len(data_list)):
             img_key = data_list[i]["sample_path"]
-            data_list[i]["sample_path"] = s3connection.get_presigned_url(SAMPLE_BUCKET_NAME,img_key)
+            data_list[i]["sample_path"] = s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,SAMPLE_FOLDER_NAME+img_key)
     except:
         raise exceptions.DataBaseException
     
@@ -329,8 +328,8 @@ def exec_recommend(request):
 
         #save clustering result into s3 storage
         clt_key = CLUSTER_FOLDER_NAME + room_img
-        s3connection.upload_file_into_s3(clt_path,CLUSTER_BUCKET_NAME,clt_key)
-        clt_url = s3connection.get_presigned_url(CLUSTER_BUCKET_NAME,clt_key)
+        s3connection.upload_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
+        clt_url = s3connection.get_presigned_url(USER_BUCKET_NAME,clt_key)
 
         #clustering result 사진 삭제
         os.remove(clt_path)
