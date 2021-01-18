@@ -59,6 +59,7 @@ def get_best_image_list(request):
         raise exceptions.DataBaseException
     
     data = {
+            'data2':'https://dachaeartwork.s3.ap-northeast-2.amazonaws.com/samplematching/IMG_2487.PNG',
             "data" : data_list,
             }
     return Response(data)
@@ -225,53 +226,53 @@ def set_user_image_upload(request):
 
     
     #파일 저장 
-    #try:
-    #백엔드에 사용자 업로드 이미지 저장
-    rand_str = get_random_string(8)
-    if user_id:
-        filename = server_time + user_id + rand_str + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
-        save_path = os.path.join(user_id, filename)
-    else:
-        filename = server_time + rand_str + upload_files[0].name 
-        save_path = os.path.join(rand_str, filename)
-    
-    default_storage.save(save_path, upload_files[0])
-    file_addr = os.path.join(settings.MEDIA_ROOT,save_path)
+    try:
+        #백엔드에 사용자 업로드 이미지 저장
+        rand_str = get_random_string(8)
+        if user_id:
+            filename = server_time + user_id + rand_str + upload_files[0].name #저장할 파일명 지정 (서버타임+유저아이디+_파일명 형식)
+            save_path = os.path.join(user_id, filename)
+        else:
+            filename = server_time + rand_str + upload_files[0].name 
+            save_path = os.path.join(rand_str, filename)
+        
+        default_storage.save(save_path, upload_files[0])
+        file_addr = os.path.join(settings.MEDIA_ROOT,save_path)
 
-    key = s3connection.save_file_into_s3(file_addr,USER_BUCKET_NAME,filename)
+        key = s3connection.save_file_into_s3(file_addr,USER_BUCKET_NAME,filename)
 
-    #백엔드에 저장된 파일을 aws s3 스토리지에 저장
-    # bucket = USER_BUCKET_NAME
-    # key = s3connection.upload_file_into_s3(file_addr,bucket,filename)
-    #접근 url 반환
-    if key:
-        s3_url = s3connection.get_presigned_url(USER_BUCKET_NAME,key) 
-    else: 
-        raise exceptions.StorageConnectionException      
-    #models.Tb_UPLOAD_INFO 에 업로드 정보 저장
-    if s3_url:
-        #models.TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
-        upload_obj = models.TbUploadInfo(user_id=user_id,server_time=server_time,room_img=key) #key를 저장
-        upload_obj.save()
-        upload_id = upload_obj.upload_id
-    else:
-        exceptions.DataBaseException
+        #백엔드에 저장된 파일을 aws s3 스토리지에 저장
+        # bucket = USER_BUCKET_NAME
+        # key = s3connection.upload_file_into_s3(file_addr,bucket,filename)
+        #접근 url 반환
+        if key:
+            s3_url = s3connection.get_presigned_url(USER_BUCKET_NAME,key) 
+        else: 
+            raise exceptions.StorageConnectionException      
+        #models.Tb_UPLOAD_INFO 에 업로드 정보 저장
+        if s3_url:
+            #models.TbUploadInfo.objects.create(user_id=user_id,server_time=server_time,room_img=file_addr)
+            upload_obj = models.TbUploadInfo(user_id=user_id,server_time=server_time,room_img=key) #key를 저장
+            upload_obj.save()
+            upload_id = upload_obj.upload_id
+        else:
+            exceptions.DataBaseException
 
-    #백엔드에서 삭제
-    if user_id:
-        shutil.rmtree(os.path.join(settings.MEDIA_ROOT,user_id)) #user folder 전체를 삭제
-    else:
-        shutil.rmtree(os.path.join(settings.MEDIA_ROOT,rand_str))
-    #default_storage.delete(upload_file_path) #업로드 file만 삭제
-    
-    #TODO: save into user log
-    if user_id is None or not models.TbUserInfo.objects.filter(user_id=user_id).exists():
-        print("save into user log with user=null")
-    else:
-        print("save into user log with user")
+        #백엔드에서 삭제
+        if user_id:
+            shutil.rmtree(os.path.join(settings.MEDIA_ROOT,user_id)) #user folder 전체를 삭제
+        else:
+            shutil.rmtree(os.path.join(settings.MEDIA_ROOT,rand_str))
+        #default_storage.delete(upload_file_path) #업로드 file만 삭제
+        
+        #TODO: save into user log
+        if user_id is None or not models.TbUserInfo.objects.filter(user_id=user_id).exists():
+            print("save into user log with user=null")
+        else:
+            print("save into user log with user")
 
-    # except: 
-    #     raise exceptions.DataBaseException
+    except: 
+        raise exceptions.DataBaseException
 
     data = {
             "file_addr" : s3_url,
@@ -332,7 +333,7 @@ def exec_recommend(request):
 
         #save clustering result into s3 storage
         clt_key = CLUSTER_FOLDER_NAME + room_img
-        s3connection.upload_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
+        s3connection.save_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
         clt_url = s3connection.get_presigned_url(USER_BUCKET_NAME,clt_key)
 
         #clustering result 사진 삭제
