@@ -22,10 +22,10 @@ class S3Connection():
         self.s3_client = boto3.client('s3',**AWS_S3_CREDS)
 
     def save_file_into_s3(self,filepath,bucket,key):
-        try:
-            self.s3_client.upload_file(filepath,bucket,key)
-        except:
-            raise exceptions.StorageConnectionException
+        # try:
+        self.s3_client.put_object(filepath,bucket,key)
+        # except:
+            # raise exceptions.StorageConnectionException
         return key
 
     # def upload_file_into_s3(self,filepath,bucket,key):
