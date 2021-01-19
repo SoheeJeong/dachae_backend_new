@@ -54,12 +54,11 @@ def get_best_image_list(request):
         #s3 path 로 바꾸기
         for i in range(len(data_list)):
             img_key = data_list[i]["sample_path"]
-            data_list[i]["sample_path"] = s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,SAMPLE_FOLDER_NAME+img_key)
+            data_list[i]["sample_path"] = "http://"+ARTWORK_BUCKET_NAME+".s3.ap-northeast-2.amazonaws.com/"+SAMPLE_FOLDER_NAME+img_key #s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,SAMPLE_FOLDER_NAME+img_key)
     except:
         raise exceptions.DataBaseException
     
     data = {
-            'data2':'https://dachaeartwork.s3.ap-northeast-2.amazonaws.com/samplematching/IMG_2487.PNG',
             "data" : data_list,
             }
     return Response(data)
