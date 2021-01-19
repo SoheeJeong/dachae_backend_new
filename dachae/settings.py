@@ -46,6 +46,9 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'drf_yasg', #swagger
+    'corsheaders',
+
+    #apps
     'dachae',
     'dachae_common',
     'dachae_matching',
@@ -75,6 +78,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'dachae.urls'
@@ -131,7 +135,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+CORS_ALLOW_ALL = False
 
+CORS_ORIGIN_WHITELIST = [
+    "https://localhost:3000"
+]
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
