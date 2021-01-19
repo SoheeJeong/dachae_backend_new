@@ -31,6 +31,4 @@ urlpatterns = [
     path('api/dachae/',include(dachae_matching.urls,namespace='macthing'))
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL,
-                          document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)
