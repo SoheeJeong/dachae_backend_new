@@ -135,6 +135,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+CORS_ALLOW_ALL = False
+
 CORS_ORIGIN_WHITELIST = [
     "https://localhost:3000"
 ]
