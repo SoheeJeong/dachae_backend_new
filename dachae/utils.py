@@ -97,6 +97,11 @@ class S3Connection():
         #         return None
         #     return savepath
 
+def get_public_url(bucket,key):
+    public_url = "http://"+bucket+".s3.ap-northeast-2.amazonaws.com/"+key
+    return public_url
+
+
 def age_range_calulator(birthday_date):
     todays_date = datetime.date.today()
     

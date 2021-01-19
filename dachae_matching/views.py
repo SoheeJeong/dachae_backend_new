@@ -16,7 +16,7 @@ from .matching import GetImageColor, Recommendation
 from dachae import models
 from dachae import exceptions
 
-from dachae.utils import S3Connection,check_token_isvalid,get_random_string,get_label_filtered_result
+from dachae.utils import S3Connection,check_token_isvalid,get_random_string,get_label_filtered_result,get_public_url
 
 s3connection = S3Connection()
 
@@ -54,12 +54,11 @@ def get_best_image_list(request):
         #s3 path 로 바꾸기
         for i in range(len(data_list)):
             img_key = data_list[i]["sample_path"]
-            data_list[i]["sample_path"] = s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,SAMPLE_FOLDER_NAME+img_key)
+            data_list[i]["sample_path"] = get_public_url(ARTWORK_BUCKET_NAME,SAMPLE_FOLDER_NAME+img_key)
     except:
         raise exceptions.DataBaseException
     
     data = {
-            'data2':'https://dachaeartwork.s3.ap-northeast-2.amazonaws.com/samplematching/IMG_2487.PNG',
             "data" : data_list,
             }
     return Response(data)
@@ -90,7 +89,7 @@ def get_picture_filtered_result(request):
     #s3 파일 경로 얻기
     for i in range(len(result_image_list)):
         img_key = result_image_list[i]["img_path"] #get key
-        result_image_list[i]["img_path"] = s3connection.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+        result_image_list[i]["img_path"] = get_public_url(ARTWORK_BUCKET_NAME,img_key)
 
     #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
     
@@ -155,13 +154,11 @@ def get_picture_detail_info(request):
         "label_list":label_list
     })
 
-    #presigned url 생성
-    bucket = ARTWORK_BUCKET_NAME
-    key = image_data["img_path"]
-    s3_url = s3connection.get_presigned_url(bucket,key)
-
+    #s3 image path
+    img_key = image_data["img_path"]
+    public_url = get_public_url(ARTWORK_BUCKET_NAME,img_key)
     #response 를 위한 img path 데이터 변경
-    image_data["img_path"]=s3_url
+    image_data["img_path"]=public_url
 
     data = {
             "data": image_data,
