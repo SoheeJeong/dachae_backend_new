@@ -135,11 +135,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-CORS_ALLOW_ALL = False
+CORS_ALLOW_ALL = True
 
-CORS_ORIGIN_WHITELIST = [
-    "https://localhost:3000"
-]
+#CORS_ORIGIN_WHITELIST = [
+#    "https://localhost:3000"
+#]
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
