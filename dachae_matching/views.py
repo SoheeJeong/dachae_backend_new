@@ -221,7 +221,6 @@ def set_user_image_upload(request):
     if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
         raise exceptions.WrongFileFormatException
 
-    
     #파일 저장 
     try:
         #백엔드에 사용자 업로드 이미지 저장
@@ -239,8 +238,6 @@ def set_user_image_upload(request):
         key = s3connection.save_file_into_s3(file_addr,USER_BUCKET_NAME,filename)
 
         #백엔드에 저장된 파일을 aws s3 스토리지에 저장
-        # bucket = USER_BUCKET_NAME
-        # key = s3connection.upload_file_into_s3(file_addr,bucket,filename)
         #접근 url 반환
         if key:
             s3_url = s3connection.get_presigned_url(USER_BUCKET_NAME,key) 
