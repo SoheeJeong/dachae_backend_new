@@ -172,5 +172,4 @@ class Recommendation():
                 
 
         
-        
         return df_analog ,df_compl,df_mono   

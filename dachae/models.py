@@ -12,7 +12,7 @@ class TbActionInfo(models.Model):
     action_id = models.AutoField(primary_key=True)
     action_nm = models.CharField(max_length=50)
     upload_id = models.PositiveIntegerField(blank=True, null=True)
-    img = models.ForeignKey('TbArtworkInfo', models.DO_NOTHING, blank=True, null=True)
+    img_id = models.PositiveIntegerField(blank=True, null=True)
     label1 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label1_action')
     label2 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label2_action')
     label3 = models.ForeignKey('TbLabelInfo', models.DO_NOTHING, blank=True, null=True, related_name='label3_action')
@@ -24,7 +24,7 @@ class TbActionInfo(models.Model):
 
 class TbArtworkInfo(models.Model):
     img_id = models.AutoField(primary_key=True)
-    img_path = models.CharField(max_length=100)
+    img_path = models.CharField(max_length=200)
     title = models.CharField(max_length=50, blank=True, null=True)
     author = models.CharField(max_length=50, blank=True, null=True)
     era = models.CharField(max_length=50, blank=True, null=True)
@@ -85,7 +85,7 @@ class TbProductInfo(models.Model):
     company = models.ForeignKey(TbCompanyInfo, models.DO_NOTHING)
     price = models.CharField(max_length=50, blank=True, null=True)
     purchase_url = models.CharField(max_length=500)
-    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING)
+    img_id = models.PositiveIntegerField()
 
     class Meta:
         managed = False
@@ -96,7 +96,7 @@ class TbPurchaseInfo(models.Model):
     purchase_id = models.AutoField(primary_key=True)
     user_id = models.PositiveIntegerField(blank=True, null=True)
     server_time = models.DateTimeField(blank=True, null=True)
-    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING)
+    img_id = models.PositiveIntegerField()
 
     class Meta:
         managed = False
@@ -106,7 +106,7 @@ class TbPurchaseInfo(models.Model):
 class TbSampleList(models.Model):
     sample_id = models.AutoField(primary_key=True)
     sample_path = models.CharField(max_length=70)
-    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING, blank=True, null=True)
+    img_id = models.PositiveIntegerField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -178,7 +178,7 @@ class TbWishlistInfo(models.Model):
     wish_id = models.AutoField(primary_key=True)
     user_id = models.PositiveIntegerField()
     server_time = models.DateTimeField()
-    img = models.ForeignKey(TbArtworkInfo, models.DO_NOTHING)
+    img_id = models.PositiveIntegerField()
 
     class Meta:
         managed = False
