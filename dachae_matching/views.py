@@ -276,6 +276,7 @@ def exec_recommend(request):
     check_token_isvalid(access_token,user_id)
 
     label_list = body["label_list"]
+    #TODO: 라벨 최소개수 조건 검사
     if len(label_list) > MAX_LABEL_NUM:
         raise exceptions.TooMuchLabelSeletedException
 
@@ -317,7 +318,7 @@ def exec_recommend(request):
     except:
         raise exceptions.RecommendationException
 
-    #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list) -> count, label_list
+    #라벨 필터링 과정
     analog = get_label_filtered_result(label_list,analog)
 
     if user_id:
@@ -333,7 +334,7 @@ def exec_recommend(request):
         'room_img_url':room_img_url,
         'clustering_result_url':clt_url,
         'chosen_label':label_nm_list,
-        'recommend_images':analog #img id,img_path(presigned uri path),count
+        'recommend_images':analog
     }
     return Response(data)
 

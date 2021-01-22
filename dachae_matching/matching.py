@@ -115,14 +115,10 @@ class GetImageColor():
         plt.figure()
         plt.axis('on')
         plt.imshow(bar)
-        #backend에 임시 저장 후 경로 반환
-        # save_path = settings.MEDIA_ROOT+'clt/clusering_result.jpg'
-        # plt.savefig(save_path)
         img_data = BytesIO()
         plt.savefig(img_data, format='jpg')
         img_data.seek(0)
         return img_data
-        # return save_path
 
 class Recommendation():
     def __init__(self,clt,data):
@@ -160,7 +156,7 @@ class Recommendation():
                 s=int(s)
                 v=int(v)
 
-                roomcolor_analog= (abs(self.df['h'+str(i)]-h)!=0)&(abs(self.df['h'+str(i)]-h)<=30)&(abs(self.df['s'+str(i)]-s)==0)&(abs(self.df['v'+str(i)]-v)<=5)
+                roomcolor_analog= (abs(self.df['h'+str(i)]-h)>=0)&(abs(self.df['h'+str(i)]-h)<=30)&(abs(self.df['s'+str(i)]-s)==0)&(abs(self.df['v'+str(i)]-v)<=5)
                 # roomcolor_compl=(abs(self.df['h'+str(i)]-h)==180)&(abs(self.df['s'+str(i)]-s)<=5)&(abs(self.df['v'+str(i)]-v)<=5)
                 # roomcolor_mono=(self.df['h'+str(i)]==h)&(abs(self.df['s'+str(i)]-s)<=10)
 

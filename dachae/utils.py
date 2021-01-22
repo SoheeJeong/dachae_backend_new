@@ -33,14 +33,6 @@ class S3Connection():
         self.s3_client.download_file(bucket,key,filepath)
         return filepath
         
-    # def upload_file_into_s3(self,filepath,bucket,key):
-    #     try:
-    #         transfer = S3Transfer(self.s3_client)
-    #         transfer.upload_file(filepath,bucket,key)
-    #     except:
-    #         return None
-    #     return key
-
     def get_presigned_url(self,bucket,key,expiration=3600):
         """Generate a presigned URL to share an S3 object
 
@@ -85,19 +77,6 @@ def convert_recommended_img_path_into_s3_path(recommend_results):
             "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
         })
     return analog
-    # for i in range(len(comp)):
-    #     img_key = comp[i]["img_path"].values[0]
-    #     del comp[i]["img_path"]
-    #     comp[i].update({
-    #         "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
-    #         })
-    # for i in range(len(mono)):
-    #     img_key = mono[i]["img_path"].values[0]
-    #     del mono[i]["img_path"]
-    #     mono[i].update({
-    #         "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
-    #         })
-    # return analog,comp,mono
 
 def age_range_calulator(birthday_date):
     todays_date = datetime.date.today()
@@ -132,8 +111,6 @@ def age_range_calulator(birthday_date):
         age_range = "100세 이상"
 
     return age_range
-
-
 
 def check_token_isvalid(access_token,user_id,restrict=True):
     '''
