@@ -1,4 +1,5 @@
 import os
+import json
 import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
@@ -216,18 +217,36 @@ def get_label_filtered_result(label_list,matching_result=None):
         analog,comp,mono = matching_result
         return analog,comp,mono
     else:
-        label_query = None
         #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork object들의 합집합
+        label_query = None
         for label_dict in label_list: 
-            #TODO: artwork 별로 몇개의 라벨이 포함되어 있는지 count 정보 저장 필요. 이 기준으로 sorting 필요.
+            #label1에 포함하고 있는지
             label1_check = TbArtworkInfo.objects.filter(label1_id=label_dict["label_id"])
+            label1_obj = [{'img_id':obj.img_id,'img_path':obj.img_path} for obj in label1_check]
+            #label2에 포함하고 있는지
             label2_check = TbArtworkInfo.objects.filter(label2_id=label_dict["label_id"])
+            label2_obj = [{'img_id':obj.img_id,'img_path':obj.img_path} for obj in label2_check]
+            #label3에 포함하고 있는지
             label3_check = TbArtworkInfo.objects.filter(label3_id=label_dict["label_id"])
-            if label_query:
-                label_query = label_query.union(label1_check,label2_check,label3_check)
-            else:
-                label_query = label1_check.union(label2_check,label3_check)
+            label3_obj = [{'img_id':obj.img_id,'img_path':obj.img_path} for obj in label3_check]
 
-        #TODO: order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
-        result_image_list = label_query.order_by("img_id").values("img_path","img_id")
+            if label_query:
+                label_query += label1_obj+label2_obj+label3_obj
+            else:
+                label_query = label1_obj+label2_obj+label3_obj
+        
+        result_label_query = label_query
+        #중복제거 및 order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
+        result_image_list = []
+        for item in result_label_query:
+            count = result_label_query.count(item)
+            result_image_list.append(
+                {
+                    "img_id":item["img_id"],
+                    "img_path":item["img_path"],
+                    "count":count
+                }
+            )
+            result_label_query = [value for value in result_label_query if value != item]
+        result_image_list = sorted(result_image_list,key=lambda k:k["count"],reverse=True)
         return result_image_list

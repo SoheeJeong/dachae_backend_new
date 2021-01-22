@@ -31,14 +31,12 @@ class GetImageColor():
         resp = urllib.request.urlopen(url)
         image = np.asarray(bytearray(resp.read()), dtype="uint8")
         image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-
         return image
 
     #이미지 로드, 전처리
     def preprocess_image(self):
         #load image from url
         image = self.url_to_image(self.imgurl)
-        
         #load image from path
         #image = cv2.imread(os.path.join(self.imgurl))
         
@@ -173,6 +171,5 @@ class Recommendation():
                     df_mono.append( dict(self.df[roomcolor_mono][['img_id','img_path']]) )
                 
 
-        
         
         return df_analog ,df_compl,df_mono   
