@@ -85,7 +85,6 @@ class TbProductInfo(models.Model):
     company = models.ForeignKey(TbCompanyInfo, models.DO_NOTHING)
     price = models.CharField(max_length=50, blank=True, null=True)
     purchase_url = models.CharField(max_length=500)
-    img_id = models.PositiveIntegerField()
 
     class Meta:
         managed = False
