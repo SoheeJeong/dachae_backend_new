@@ -297,13 +297,18 @@ def exec_recommend(request):
     #exec recommend
     # try:
     room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img)
+
     getimgcolor = GetImageColor(room_img_url)
     clt =  getimgcolor.get_meanshift() #room color clt with meanshift
-    clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
+    # clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
+    img_data = getimgcolor.centeroid_histogram(clt) 
+
     #save clustering result into s3 storage
     clt_key = CLUSTER_FOLDER_NAME + room_img
-    #s3connection.save_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
+    s3connection.save_file_into_s3(img_data,USER_BUCKET_NAME,clt_key)
     clt_url = get_public_url(USER_BUCKET_NAME,clt_key)
+    # s3connection.upload_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
+    # clt_url = get_public_url(USER_BUCKET_NAME,clt_key)
 
     #clustering result 사진 삭제
     #os.remove(clt_path)
