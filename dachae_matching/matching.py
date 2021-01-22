@@ -116,9 +116,13 @@ class GetImageColor():
         plt.axis('on')
         plt.imshow(bar)
         #backend에 임시 저장 후 경로 반환
-        save_path = settings.MEDIA_ROOT+'clt/clusering_result.jpg'
-        plt.savefig(save_path)
-        return save_path
+        # save_path = settings.MEDIA_ROOT+'clt/clusering_result.jpg'
+        # plt.savefig(save_path)
+        img_data = BytesIO()
+        plt.savefig(img_data, format='jpg')
+        img_data.seek(0)
+        return img_data
+        # return save_path
 
 class Recommendation():
     def __init__(self,clt,data):
