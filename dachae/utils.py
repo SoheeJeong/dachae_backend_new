@@ -33,14 +33,6 @@ class S3Connection():
         self.s3_client.download_file(bucket,key,filepath)
         return filepath
         
-    # def upload_file_into_s3(self,filepath,bucket,key):
-    #     try:
-    #         transfer = S3Transfer(self.s3_client)
-    #         transfer.upload_file(filepath,bucket,key)
-    #     except:
-    #         return None
-    #     return key
-
     def get_presigned_url(self,bucket,key,expiration=3600):
         """Generate a presigned URL to share an S3 object
 
@@ -75,37 +67,16 @@ def get_public_url(bucket,key):
     return public_url
 
 def convert_recommended_img_path_into_s3_path(recommend_results):
-    analog,comp,mono = recommend_results
+    analog = recommend_results
     ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
 
     for i in range(len(analog)):
-        img_key = analog[i]["img_path"].values[0]
+        img_key = analog[i]["img_path"]
         del analog[i]["img_path"]
         analog[i].update({
             "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
         })
-    for i in range(len(comp)):
-        img_key = comp[i]["img_path"].values[0]
-        del comp[i]["img_path"]
-        comp[i].update({
-            "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
-            })
-    for i in range(len(mono)):
-        img_key = mono[i]["img_path"].values[0]
-        del mono[i]["img_path"]
-        mono[i].update({
-            "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
-            })
-    return analog,comp,mono
-
-
-     # def download_file_from_s3(savepath,bucket,key):
-        #     try:
-        #         s3_client.download_file(bucket,key,savepath)
-        #     except:
-        #         return None
-        #     return savepath
-
+    return analog
 
 def age_range_calulator(birthday_date):
     todays_date = datetime.date.today()
@@ -140,8 +111,6 @@ def age_range_calulator(birthday_date):
         age_range = "100세 이상"
 
     return age_range
-
-
 
 def check_token_isvalid(access_token,user_id,restrict=True):
     '''
@@ -212,10 +181,28 @@ def get_label_filtered_result(label_list,matching_result=None):
     이미지에 선택된 라벨이 몇개가 포함되었는지(count)와 어떤 라벨인지(label list)도 도출한다.
     execRecommend 와 getPictureFilteredResult 에서 사용된다.
     """
-    #execrecommend
+    #execRecommend
     if matching_result:
-        analog,comp,mono = matching_result
-        return analog,comp,mono
+        analog = matching_result
+        result_image_list = []
+        for item in analog:
+            count = 0
+            for label_dict in label_list: 
+                if TbArtworkInfo.objects.filter(img_id=item["img_id"],label1_id=label_dict["label_id"]).exists():
+                    count += 1
+                if TbArtworkInfo.objects.filter(img_id=item["img_id"],label2_id=label_dict["label_id"]).exists():
+                    count += 1
+                if TbArtworkInfo.objects.filter(img_id=item["img_id"],label3_id=label_dict["label_id"]).exists():
+                    count += 1
+            if count>0:
+                result_image_list.append(
+                    {
+                        "img_id":item["img_id"],
+                        "img_path":item["img_path"],
+                        "count":count
+                    }
+                )
+    #getPictureFilteredResult           
     else:
         #입력으로 받은 라벨 하나에 대해 해당 라벨을 포함하고 있는 artwork object들의 합집합
         label_query = None
@@ -236,9 +223,10 @@ def get_label_filtered_result(label_list,matching_result=None):
                 label_query = label1_obj+label2_obj+label3_obj
         
         result_label_query = label_query
-        #중복제거 및 order by 라벨이 많이 포함되어 있는 순으로 (count 정보)
+        #중복제거 및 count 정보 추출
         result_image_list = []
-        for item in result_label_query:
+        while result_label_query:
+            item = result_label_query[0]
             count = result_label_query.count(item)
             result_image_list.append(
                 {
@@ -248,5 +236,7 @@ def get_label_filtered_result(label_list,matching_result=None):
                 }
             )
             result_label_query = [value for value in result_label_query if value != item]
-        result_image_list = sorted(result_image_list,key=lambda k:k["count"],reverse=True)
-        return result_image_list
+
+    #count 기준으로 정렬
+    result_image_list = sorted(result_image_list,key=lambda k:k["count"],reverse=True)
+    return result_image_list
