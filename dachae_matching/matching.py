@@ -152,7 +152,7 @@ class Recommendation():
         # 단색의 명화 추천
         roomcolor_mono(단색) : h는 동일 (AND) s는 +-10, v는 고려하지 않음
         """
-        df_analog, df_compl, df_mono = [], [], []
+        df_analog = [] #, df_compl, df_mono = [], [], []
         for i in range(1,4): 
             for center in self.clt.cluster_centers_:
                 h,s,v = Recommendation.revised_rgb_to_hsv(self,center[0],center[1],center[2])
@@ -161,19 +161,18 @@ class Recommendation():
                 v=int(v)
 
                 roomcolor_analog= (abs(self.df['h'+str(i)]-h)!=0)&(abs(self.df['h'+str(i)]-h)<=30)&(abs(self.df['s'+str(i)]-s)==0)&(abs(self.df['v'+str(i)]-v)<=5)
-                roomcolor_compl=(abs(self.df['h'+str(i)]-h)==180)&(abs(self.df['s'+str(i)]-s)<=5)&(abs(self.df['v'+str(i)]-v)<=5)
-                roomcolor_mono=(self.df['h'+str(i)]==h)&(abs(self.df['s'+str(i)]-s)<=10)
+                # roomcolor_compl=(abs(self.df['h'+str(i)]-h)==180)&(abs(self.df['s'+str(i)]-s)<=5)&(abs(self.df['v'+str(i)]-v)<=5)
+                # roomcolor_mono=(self.df['h'+str(i)]==h)&(abs(self.df['s'+str(i)]-s)<=10)
 
                 #유사색
                 if len(self.df[roomcolor_analog]['img_path']):
-                    df_analog.append( dict(self.df[roomcolor_analog][['img_id','img_path']]) )
-                #보색
-                if len(self.df[roomcolor_compl]['img_path']):
-                    df_compl.append( dict(self.df[roomcolor_compl][['img_id','img_path']]) )
-                #단색
-                if len(self.df[roomcolor_mono]['img_path']):
-                    df_mono.append( dict(self.df[roomcolor_mono][['img_id','img_path']]) )
+                    df_analog.append( (self.df[roomcolor_analog][['img_id','img_path']].to_dict('records'))[0] )
+                # #보색
+                # if len(self.df[roomcolor_compl]['img_path']):
+                #     df_compl.append( (self.df[roomcolor_compl][['img_id','img_path']].to_dict('records'))[0] )
+                # #단색
+                # if len(self.df[roomcolor_mono]['img_path']):
+                #     df_mono.append( (self.df[roomcolor_mono][['img_id','img_path']].to_dict('records'))[0] )
                 
-
-        
-        return df_analog ,df_compl,df_mono   
+        # return df_analog,df_compl,df_mono   
+        return df_analog
