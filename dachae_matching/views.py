@@ -317,7 +317,6 @@ def exec_recommend(request):
     except:
         raise exceptions.RecommendationException
 
-
     #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list) -> count, label_list
     analog = get_label_filtered_result(label_list,analog)
 
