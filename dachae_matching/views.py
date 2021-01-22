@@ -16,7 +16,7 @@ from .matching import GetImageColor, Recommendation
 from dachae import models
 from dachae import exceptions
 
-from dachae.utils import S3Connection,check_token_isvalid,get_random_string,get_label_filtered_result,get_public_url
+from dachae.utils import S3Connection,check_token_isvalid,get_random_string,get_label_filtered_result,get_public_url,convert_recommended_img_path_into_s3_path
 
 s3connection = S3Connection()
 
@@ -287,10 +287,6 @@ def exec_recommend(request):
         else:
             label_id_list.append(None)   
 
-    # if user_id:
-    #     upload_object = models.TbUploadInfo.objects.filter(user_id=user_id,room_img=room_img)
-    # else:
-    #     upload_object = models.TbUploadInfo.objects.filter(user_id__isnull=True,room_img=room_img)
     upload_object = models.TbUploadInfo.objects.filter(upload_id=upload_id)
     if not upload_object.exists():
         raise exceptions.DataBaseException
@@ -299,30 +295,29 @@ def exec_recommend(request):
     pic_data = models.TbArtworkInfo.objects.values('img_id','img_path','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','label1_id','label2_id','label3_id')
 
     #exec recommend
+    # try:
+    room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img)
+    getimgcolor = GetImageColor(room_img_url)
+    clt =  getimgcolor.get_meanshift() #room color clt with meanshift
+    clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
+    #save clustering result into s3 storage
+    clt_key = CLUSTER_FOLDER_NAME + room_img
+    #s3connection.save_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
+    clt_url = get_public_url(USER_BUCKET_NAME,clt_key)
+
+    #clustering result 사진 삭제
+    #os.remove(clt_path)
+
+    #선택된 label과 clustering 결과 이미지 path를 models.Tb_upload_info에 저장
     try:
-        room_img_url = s3connection.get_presigned_url(USER_BUCKET_NAME,room_img)
-        getimgcolor = GetImageColor(room_img_url)
-        clt =  getimgcolor.get_meanshift() #room color clt with meanshift
-        clt_path = getimgcolor.centeroid_histogram(clt) #clustering result saved path (backend 임시저장 경로)
-
-        #save clustering result into s3 storage
-        clt_key = CLUSTER_FOLDER_NAME + room_img
-        s3connection.save_file_into_s3(clt_path,USER_BUCKET_NAME,clt_key)
-        clt_url = s3connection.get_presigned_url(USER_BUCKET_NAME,clt_key)
-
-        #clustering result 사진 삭제
-        os.remove(clt_path)
-
-        #선택된 label과 clustering 결과 이미지 path를 models.Tb_upload_info에 저장
-        try:
-            upload_object.update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
-        except:
-            raise exceptions.DataBaseException
-        
-        recommendation = Recommendation(clt,pic_data)
-        analog,comp,mono = s3connection.convert_recommended_img_path_into_s3_path(recommendation.recommend_pic())
+        upload_object.update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
     except:
-        raise exceptions.RecommendationException
+        raise exceptions.DataBaseException
+    
+    recommendation = Recommendation(clt,pic_data)
+    analog,comp,mono = convert_recommended_img_path_into_s3_path(recommendation.recommend_pic())
+    # except:
+    #     raise exceptions.RecommendationException
 
 
     #TODO: 라벨 필터링 과정 추가 (filter criteria: label_list) -> count, label_list

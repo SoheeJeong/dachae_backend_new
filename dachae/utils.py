@@ -23,12 +23,16 @@ class S3Connection():
         self.s3_client = boto3.client('s3',**AWS_S3_CREDS)
 
     def save_file_into_s3(self,filepath,bucket,key):
-        # try:
-        self.s3_client.put_object(Body=filepath,Bucket=bucket,Key=key)
-        # except:
-            # raise exceptions.StorageConnectionException
+        #try:
+        self.s3_client.put_object(filepath,bucket,key)
+        #except:
+        #    raise exceptions.StorageConnectionException
         return key
 
+    def download_file(self,bucket,key,filepath):
+        self.s3_client.download_file(bucket,key,filepath)
+        return filepath
+        
     # def upload_file_into_s3(self,filepath,bucket,key):
     #     try:
     #         transfer = S3Transfer(self.s3_client)
@@ -66,29 +70,33 @@ class S3Connection():
 
         return url
 
-    def convert_recommended_img_path_into_s3_path(self,recommend_results):
-        analog,comp,mono = recommend_results
-        ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
+def get_public_url(bucket,key):
+    public_url = "http://"+bucket+".s3.ap-northeast-2.amazonaws.com/"+key
+    return public_url
 
-        for i in range(len(analog)):
-            img_key = analog[i]["img_path"].values[0]
-            del analog[i]["img_path"]
-            analog[i].update({
-                "img_path": self.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
+def convert_recommended_img_path_into_s3_path(recommend_results):
+    analog,comp,mono = recommend_results
+    ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
+
+    for i in range(len(analog)):
+        img_key = analog[i]["img_path"].values[0]
+        del analog[i]["img_path"]
+        analog[i].update({
+            "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
+        })
+    for i in range(len(comp)):
+        img_key = comp[i]["img_path"].values[0]
+        del comp[i]["img_path"]
+        comp[i].update({
+            "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
             })
-        for i in range(len(comp)):
-            img_key = comp[i]["img_path"].values[0]
-            del comp[i]["img_path"]
-            comp[i].update({
-                "img_path": self.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
-                })
-        for i in range(len(mono)):
-            img_key = mono[i]["img_path"].values[0]
-            del mono[i]["img_path"]
-            mono[i].update({
-                "img_path": self.get_presigned_url(ARTWORK_BUCKET_NAME,img_key)
-                })
-        return analog,comp,mono
+    for i in range(len(mono)):
+        img_key = mono[i]["img_path"].values[0]
+        del mono[i]["img_path"]
+        mono[i].update({
+            "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
+            })
+    return analog,comp,mono
 
 
      # def download_file_from_s3(savepath,bucket,key):
@@ -97,10 +105,6 @@ class S3Connection():
         #     except:
         #         return None
         #     return savepath
-
-def get_public_url(bucket,key):
-    public_url = "http://"+bucket+".s3.ap-northeast-2.amazonaws.com/"+key
-    return public_url
 
 
 def age_range_calulator(birthday_date):
