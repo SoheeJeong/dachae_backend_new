@@ -229,7 +229,7 @@ def set_user_image_upload(request):
         #s3에 저장
         key = s3connection.save_file_into_s3(upload_files[0],USER_BUCKET_NAME,filename)  
         #접근 url 얻기
-        s3_url = get_public_url(USER_BUCKET_NAME,key)
+        s3_url = s3connection.get_presigned_url(USER_BUCKET_NAME,key)
     
         #models.Tb_UPLOAD_INFO 에 업로드 정보 저장
         if s3_url:
