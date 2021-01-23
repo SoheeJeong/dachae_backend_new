@@ -285,17 +285,19 @@ def get_user_info(request):
     validation = check_token_isvalid(access_token,user_id)
     if validation == "not logged":
         raise exceptions.LoginRequiredException
-    
+
     #TODO: 사용자 정보 가져오기
+    user = TbUserInfo.objects.get(user_id=user_id)    
+
     data = {
-        'user_id': 123456,
-        'social_platform': 'naver',
-        'user_nm' : "닉네임",            
-        'level' : 'free', 
-        'role' : 'member',
-        "email":"wjdthgmlgo@naver.com",
-        "gender":"female",
-        "birthday_date":"1998-06-16",
-        "rgst_date":"2021-01-11 22:09:38",
+        'social_id': user.social_id,
+        'social_platform': user.social_platform,
+        'user_nm' : user.user_nm,            
+        'level' : user.level, 
+        'role' : user.role,
+        "email":user.email,
+        "gender":user.gender,
+        "birthday_date":user.birthday_date,
+        "rgst_date":user.rgst_date,
     }
     return Response(data)
