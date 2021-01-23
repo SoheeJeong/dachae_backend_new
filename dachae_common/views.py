@@ -8,7 +8,7 @@ from django.conf import settings
 
 import os
 import json
-#import jwt #json web tokens//
+#import jwt #json web tokens
 import requests
 import urllib
 from datetime import datetime
@@ -34,15 +34,15 @@ def set_signup(request):
     body = json.loads(request.body.decode("utf-8"))
     #TODO: frontend에서 입력형식 체크 요청
     #TODO: default None 추가
-    social_platform = body["social_platform"]
-    social_id = body["social_id"]
-    user_nm = body["user_nm"]
-    level = body["level"]
-    role = body["role"]
-    birthday_date = body["birthday_date"] 
-    email = body["email"]
-    gender = body["gender"]
-    expires_in = body["expires_in"]
+    social_platform = None if "social_platform" not in body else body["social_platform"]
+    social_id = None if "social_id" not in body else body["social_id"]
+    user_nm = None if "user_nm" not in body else body["user_nm"]
+    level = None if "level" not in body else body["level"]
+    role = None if "role" not in body else body["role"]
+    birthday_date = None if "birthday_date" not in body else body["birthday_date"] 
+    email = None if "email" not in body else body["email"]
+    gender = None if "gender" not in body else body["gender"]
+    expires_in = None if "expires_in" not in body else body["expires_in"]
 
     if social_platform and social_id and user_nm and level and role and birthday_date and email and gender and expires_in is None:
         raise exceptions.ParameterMissingException
@@ -185,7 +185,7 @@ def set_login(request):
         raise exceptions.InvalidAccessTokenException
     
     #이미 존재하는 회원이면 - 로그인 실행
-    if TbUserInfo.objects.filter(social_platform="kakao",social_id=social_id).exists():
+    if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
         user = TbUserInfo.objects.get(social_id=social_id)
         #jwt_token = jwt.encode({'id':user.user_id},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
         
@@ -203,16 +203,6 @@ def set_login(request):
             'user_nm' : user.user_nm,
             'level' : user.level, #default free 
             'role' : user.role,
-        }
-        #TODO:temp,지우기
-        user_data = {
-            "registered":1, 
-            "user_id": "12",
-            "social_platform": "kakao",
-            "social_id":123456,
-            "user_nm" : "닉네임",               
-            "level" : "free", 
-            "role" : "member"
         }
         return JsonResponse(user_data)
 
