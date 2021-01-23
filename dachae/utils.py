@@ -164,7 +164,7 @@ def check_token_isvalid(access_token,user_id,restrict=True):
     return "valid user"
 
 def get_expire_time_from_expires_in(expires_in):
-    ts = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
+    ts = datetime.datetime.now() + datetime.timedelta(seconds=int(expires_in))
     expire_time = ts.strftime('%Y-%m-%d %H:%M:%S')
     return expire_time
 
