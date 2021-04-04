@@ -3,7 +3,7 @@ Description=uWSGI service
 After=syslog.target
 
 [Service]
-ExecStart=/home/ubuntu/venvs/dcvenv/bin/uwsgi -i /srv/dachae_backend_new/.config/uwsgi/dachae.ini
+ExecStart=/home/ubuntu/venvs/dcvenv/bin/uwsgi -i /srv/dachae_backend/.config/uwsgi/dachae.ini
 
 Restart=always
 KillSignal=SIGQUIT
