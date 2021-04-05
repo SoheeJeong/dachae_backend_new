@@ -32,37 +32,6 @@ SAMPLE_FOLDER_NAME = os.getenv("SAMPLE_FOLDER_NAME")
 #TODO: 예외처리 체크
 
 ##### 검색, 업로드, 매칭 #####
-@api_view(["GET"])
-def get_best_image_list(request):
-    '''
-    메인화면에서 샘플사진 리스트 로드
-    param example) start=0&end=2 이면 index 0,1,2 사진 로드 (1,2,3 번째 사진 로드)
-    '''
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    user_id = request.GET.get('user_id',None)
-    start = request.GET.get("start",0)  
-    end = request.GET.get("end",None)  
-
-    # user validation check
-    check_token_isvalid(access_token,user_id)
-
-    try:
-        best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","img_id")
-        end = len(best_image_list) if not end else min(len(best_image_list),int(end)+1)
-        data_list = best_image_list[int(start):end+1]
-        #s3 path 로 바꾸기
-        for i in range(len(data_list)):
-            img_key = data_list[i]["sample_path"]
-            data_list[i]["sample_path"] = get_public_url(ARTWORK_BUCKET_NAME,SAMPLE_FOLDER_NAME+img_key)
-    except:
-        raise exceptions.DataBaseException
-    
-    data = {
-            "data" : data_list,
-            }
-    return Response(data)
-
 @csrf_exempt
 @api_view(["POST"])
 def get_picture_filtered_result(request):
