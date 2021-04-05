@@ -21,7 +21,6 @@ from dachae.utils import age_range_calulator,get_expire_time_from_expires_in,che
 #TODO: service 구조로 refactoring
 #TODO: 필요한곳에 권한체크 추가
 #TODO: refresh token, delete token, naver logout
-#TODO: 카카오톡 메시지 연동 (FAQ, 문의하기)
 
 @api_view(["POST"])
 def set_signup(request):
@@ -32,52 +31,44 @@ def set_signup(request):
     header = request.headers
     access_token = header['Authorization'] if 'Authorization' in header else None
     body = json.loads(request.body.decode("utf-8"))
-    #TODO: frontend에서 입력형식 체크 요청
-    #TODO: default None 추가
     social_platform = None if "social_platform" not in body else body["social_platform"]
     social_id = None if "social_id" not in body else body["social_id"]
     user_nm = None if "user_nm" not in body else body["user_nm"]
     level = None if "level" not in body else body["level"]
     role = None if "role" not in body else body["role"]
-    birthday_date = None if "birthday_date" not in body else body["birthday_date"] 
     email = None if "email" not in body else body["email"]
-    gender = None if "gender" not in body else body["gender"]
     expires_in = None if "expires_in" not in body else body["expires_in"]
 
-    if social_platform and social_id and user_nm and level and role and birthday_date and email and gender and expires_in is None:
+    if social_platform and social_id and user_nm and level and role and email and expires_in is None:
         raise exceptions.ParameterMissingException
 
-    age_range = age_range_calulator(birthday_date) 
+    # age_range = age_range_calulator(birthday_date) 
     expire_time = get_expire_time_from_expires_in(expires_in)
 
-    #try:
-    #insert into user DB
-    user_info = TbUserInfo(
-        social_platform = social_platform,
-        social_id = social_id,
-        user_nm = user_nm,
-        birthday_date = birthday_date,
-        email = email,
-        gender = gender,
-        age_range = age_range,
-        rgst_date = datetime.now(),
-        state = "active",
-        level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
-        role = "member"
-    )
-    user_info.save()
-    user_id = user_info.user_id
-    #access token 정보 저장
-    server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    TbUserAuth(
-        user_id = user_id,
-        access_token = access_token,
-        expire_time = expire_time,
-        created_time = server_time
-    ).save()
-
-    #except:
-    #   raise exceptions.DataBaseException
+    try:
+        #insert into user DB
+        user_info = TbUserInfo(
+            social_platform = social_platform,
+            social_id = social_id,
+            user_nm = user_nm,
+            email = email,
+            rgst_date = datetime.now(),
+            state = "active",
+            level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
+            role = "member"
+        )
+        user_info.save()
+        user_id = user_info.user_id
+        #access token 정보 저장
+        server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        TbUserAuth(
+            user_id = user_id,
+            access_token = access_token,
+            expire_time = expire_time,
+            created_time = server_time
+        ).save()
+    except:
+       raise exceptions.DataBaseException
 
 
     response = {
