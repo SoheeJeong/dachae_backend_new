@@ -52,7 +52,6 @@ def set_signup(request):
             social_id = social_id,
             user_nm = user_nm,
             email = email,
-            age_range = age_range,
             rgst_date = datetime.now(),
             state = "active",
             level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
