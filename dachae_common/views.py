@@ -262,33 +262,3 @@ def set_withdrawal(request):
 
     data = {"result":"succ"}
     return Response(data)
-
-@api_view(["GET"])
-def get_user_info(request):
-    '''
-    사용자 정보 가져오기
-    '''
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    user_id = request.GET.get("user_id",None)
-
-    #valid user 인지 검사
-    validation = check_token_isvalid(access_token,user_id)
-    if validation == "not logged":
-        raise exceptions.LoginRequiredException
-
-    #TODO: 사용자 정보 가져오기
-    user = TbUserInfo.objects.get(user_id=user_id)    
-
-    data = {
-        'social_id': user.social_id,
-        'social_platform': user.social_platform,
-        'user_nm' : user.user_nm,            
-        'level' : user.level, 
-        'role' : user.role,
-        "email":user.email,
-        "gender":user.gender,
-        "birthday_date":user.birthday_date,
-        "rgst_date":user.rgst_date,
-    }
-    return Response(data)
