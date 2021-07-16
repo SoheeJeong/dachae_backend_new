@@ -121,8 +121,9 @@ class GetImageColor():
         return img_data
 
 class Recommendation():
-    def __init__(self,clt,data):
+    def __init__(self,clt,data,default=False):
         self.clt = clt
+        self.default=default
         # data 전체
         self.df = pd.DataFrame(data, columns =['img_id','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','img_path','label1_id','label2_id','label3_id'])
 
@@ -148,6 +149,12 @@ class Recommendation():
         # 단색의 명화 추천
         roomcolor_mono(단색) : h는 동일 (AND) s는 +-10, v는 고려하지 않음
         """
+        #default 이미지 추천 - random select
+        if self.default:
+            df_shuffled = self.df.sample(frac=1).reset_index(drop=True) # radom shuffle
+            df_analog = df_shuffled[1:30][['img_id','img_path']].to_dict('records') # 30개 선택
+            return df_analog
+
         df_analog = [] #, df_compl, df_mono = [], [], []
         for i in range(1,4): 
             for center in self.clt.cluster_centers_:
