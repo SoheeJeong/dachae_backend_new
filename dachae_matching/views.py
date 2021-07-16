@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import redirect
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
@@ -96,7 +97,7 @@ def get_picture_detail_info(request):
 
 @csrf_exempt
 @api_view(["POST"])
-def set_user_image_upload(request):
+def set_upload_and_recommend(request):
     '''
     사용자 로컬이미지 업로드 -> set into storage -> 로컬데이터 삭제
     '''
@@ -149,45 +150,17 @@ def set_user_image_upload(request):
     except: 
         raise exceptions.DataBaseException
 
-    data = {
-            "file_addr" : s3_url,
-            "room_img" : key,
-            "upload_id" : upload_id,
-            }
-
-    return Response(data)
-
-@csrf_exempt
-@api_view(["POST"])
-def exec_recommend(request):
     '''
-    매칭 수행
+    매칭 수행 (exec recommend)
     '''
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    body = json.loads(request.body.decode("utf-8"))
-    user_id = None if "user_id" not in body else body["user_id"]
-    upload_id = None if "upload_id" not in body else body["upload_id"] 
-    room_img = None if "room_img" not in body else body["room_img"] 
+    file_addr = s3_url
+    room_img = key
     
     if not room_img or not upload_id:
         raise exceptions.ParameterMissingException
 
     # user validation check
-    check_token_isvalid(access_token,user_id)
-
-    label_list = body["label_list"]
-    #TODO: 라벨 최소개수 조건 검사
-    if len(label_list) > MAX_LABEL_NUM:
-        raise exceptions.TooMuchLabelSeletedException
-
-    label_nm_list, label_id_list = [],[]
-    for i in range(MAX_LABEL_NUM):
-        if i<len(label_list):
-            label_nm_list.append(label_list[i]["label_nm"]) 
-            label_id_list.append(label_list[i]["label_id"])
-        else:
-            label_id_list.append(None)   
+    #check_token_isvalid(access_token,user_id)
 
     upload_object = models.TbUploadInfo.objects.filter(upload_id=upload_id)
     if not upload_object.exists():
@@ -208,9 +181,9 @@ def exec_recommend(request):
         s3connection.save_file_into_s3(img_data,USER_BUCKET_NAME,clt_key)
         clt_url = s3connection.get_presigned_url(USER_BUCKET_NAME,clt_key)
 
-        #선택된 label과 clustering 결과 이미지 path를 models.Tb_upload_info에 저장
+        #clustering 결과 이미지 path를 models.Tb_upload_info에 저장
         try:
-            upload_object.update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
+            upload_object.update(clustering_img=clt_key)
         except:
             raise exceptions.DataBaseException
         
@@ -220,21 +193,13 @@ def exec_recommend(request):
         raise exceptions.RecommendationException
 
     #라벨 필터링 과정
-    analog = get_label_filtered_result(label_list,analog)
-
-    if user_id:
-        #TODO: user log 추가
-        show_range = "all"
-    else:
-        #TODO: user log 추가 -> user=null
-        show_range = "part"
+    #analog = get_label_filtered_result(label_list,analog)
 
     data = {
-        'show_range':show_range,
         'upload_id':upload_object.values("upload_id")[0]["upload_id"],
         'room_img_url':room_img_url,
         'clustering_result_url':clt_url,
-        'chosen_label':label_nm_list,
         'recommend_images':analog
     }
+
     return Response(data)
