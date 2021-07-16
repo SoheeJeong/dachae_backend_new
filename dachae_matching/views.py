@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import redirect
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework import status
