@@ -202,3 +202,30 @@ def set_upload_and_recommend(request):
     }
 
     return Response(data)
+
+
+@api_view(["GET"])
+def get_default_recommend(request):
+    '''
+    upload를 거치지 않고 바로 Recommendations 탭을 눌렀을 때 기본 이미지 추천
+    '''
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
+    user_id = request.GET.get('user_id',None)
+
+    # user validation check
+    check_token_isvalid(access_token,user_id)
+    
+    #load artwork data
+    pic_data = models.TbArtworkInfo.objects.values('img_id','img_path','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','label1_id','label2_id','label3_id')
+
+    try:
+        recommendation = Recommendation(None,pic_data,default=True)
+        analog = convert_recommended_img_path_into_s3_path(recommendation.recommend_pic())
+    except:
+        raise exceptions.RecommendationException
+
+    data = {
+            'recommend_images': analog
+            }
+    return Response(data)
