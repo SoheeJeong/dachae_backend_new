@@ -10,6 +10,5 @@ urlpatterns = [
     path('setLogIn/', views.set_login, name='setLogIn'),
     path('setLogOut/', views.set_logout, name='setLogOut'),
     path('refreshToken/',views.refresh_token,name='refreshToken'),
-    path('setWithdrawal/',views.set_withdrawal,name='setWithdrawal'),
-    path('getUserInfo/', views.get_user_info, name='getUserInfo'),
+    path('setWithdrawal/',views.set_withdrawal,name='setWithdrawal')
 ]
