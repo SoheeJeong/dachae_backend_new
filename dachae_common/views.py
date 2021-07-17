@@ -38,7 +38,7 @@ def login_page(request):
     }
     kakao_logout_data = {
         "REST_API_KEY":os.getenv("KAKAO_APP_KEY"),
-        "LOGOUT_REDIRECT_URI":os.getenv("LOGOUT_REDIRECT_URI"),
+        "LOGOUT_REDIRECT_URI":os.getenv("KAKAO_LOGOUT_REDIRECT_URI"),
     }
     return render(request,'login.html',{'login_data':kakao_login_data,'logout_data':kakao_logout_data,"naver_login_data":naver_login_data})
 
@@ -380,7 +380,43 @@ def set_naver_login(request):
 @api_view(["GET"])
 def set_logout(request):
     '''
-    로그아웃
+    카카오 로그아웃
+    '''
+    header = request.headers
+    access_token = header['Authorization'] if 'Authorization' in header else None
+    social_platform = request.GET.get('social_platform',None)
+
+    #valid user 인지 검사
+    #validation = check_token_isvalid(access_token,user_id)
+    #if validation == "not logged":
+    #    raise exceptions.LoginRequiredException
+    if social_platform == "kakao":
+        url = "https://kapi.kakao.com/v1/user/logout"
+        headers = {
+                'Authorization':f'Bearer {access_token}',
+                'Content-type':'application/x-www-form-urlencoded;charset=utf-8',
+            }
+
+        token_kakao_response = requests.post(url,headers=headers)
+        kakao_response_result = json.loads(token_kakao_response.text)
+        social_id = kakao_response_result["id"]
+        #TODO: delete token
+    elif social_platform == "naver":
+        print('naver logout')
+        #TODO:logout
+        #TODO: delete token
+
+    data = {
+        "social_platform":social_platform,
+        "social_id":social_id,
+        "result":"succ"
+        }
+    return Response(data)
+
+@api_view(["GET"])
+def set_naver_logout(request):
+    '''
+    네이버 로그아웃
     '''
     header = request.headers
     access_token = header['Authorization'] if 'Authorization' in header else None
@@ -398,7 +434,6 @@ def set_logout(request):
 
     data = {"result":"succ"}
     return Response(data)
-
 
 @api_view(["GET"])
 def refresh_token(request):
