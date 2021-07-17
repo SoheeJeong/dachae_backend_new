@@ -25,8 +25,7 @@ from dachae.utils import age_range_calulator,get_expire_time_from_expires_in,che
 @api_view(["POST"])
 def set_signup(request):
     '''
-    새로운 회원 회원가입 실행
-    소셜로그인에서 넘어온 회원가입 페이지
+    회원가입 실행
     '''
     header = request.headers
     access_token = header['Authorization'] if 'Authorization' in header else None
@@ -34,8 +33,8 @@ def set_signup(request):
     social_platform = None if "social_platform" not in body else body["social_platform"]
     social_id = None if "social_id" not in body else body["social_id"]
     user_nm = None if "user_nm" not in body else body["user_nm"]
-    level = None if "level" not in body else body["level"]
-    role = None if "role" not in body else body["role"]
+    level = "free" if "level" not in body else body["level"]
+    role = "member" if "role" not in body else body["role"]
     email = None if "email" not in body else body["email"]
     expires_in = None if "expires_in" not in body else body["expires_in"]
 
@@ -70,7 +69,6 @@ def set_signup(request):
     except:
        raise exceptions.DataBaseException
 
-
     response = {
         "result": "succ",
         "msg": "메세지"
@@ -97,16 +95,16 @@ def login_page(request):
 
 
 @api_view(["GET"])
-def set_kakao_login(request):
-    '''
+def set_kakao_login(request): 
+    """
     카카오 로그인
-    '''
+    """
+    #1.인증코드 요청
     access_code = request.GET.get('code',None)
     if not access_code:
         raise exceptions.InvalidAccessTokenException
     social_platform = "kakao"
-
-    #2. access token 요청
+    #2.access token 요청
     try:
         url = 'https://kauth.kakao.com/oauth/token'
         headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
@@ -119,6 +117,7 @@ def set_kakao_login(request):
         token_kakao_response = requests.post(url,headers=headers,data=body)
         kakao_response_result = json.loads(token_kakao_response.text)
         access_token = kakao_response_result["access_token"]
+        refresh_token = kakao_response_result["refresh_token"]
         expires_in = kakao_response_result["expires_in"]
     except:
         raise exceptions.ServerConnectionFailedException
@@ -128,7 +127,7 @@ def set_kakao_login(request):
     if not expires_in or not social_platform:
         raise exceptions.ParameterMissingException
     
-    #3. 사용자 정보 요청
+    #3.사용자 정보 요청
     try:
         url = 'https://kapi.kakao.com/v2/user/me'
         headers = {
@@ -168,14 +167,9 @@ def set_kakao_login(request):
         }
         return JsonResponse(user_data)
 
-    #새로운 회원이면 - registered=0 으로 세팅  - 회원가입이 필요하다는 팝업
+    #새로운 회원이면 - "detail": "가입된 회원 정보가 없습니다. 회원가입 해주세요."
     else:
-        user_data = {
-            'registered':0,
-            'social_id': social_id,
-            'social_platform':social_platform
-        }
-        return JsonResponse(user_data)
+        raise exceptions.NewMemberException
 
 @api_view(["GET"])
 def set_naver_login(request):
@@ -201,6 +195,7 @@ def set_naver_login(request):
         token_naver_response = requests.post(url,headers=headers,data=body)
         naver_response_result = json.loads(token_naver_response.text)
         access_token = naver_response_result["access_token"]
+        refresh_token = naver_response_result["refresh_token"]
         expires_in = naver_response_result["expires_in"]
     except:
         raise exceptions.ServerConnectionFailedException
@@ -248,14 +243,9 @@ def set_naver_login(request):
         }
         return JsonResponse(user_data)
 
-    #새로운 회원이면 - registered=0 으로 세팅 - 회원가입이 필요하다는 팝업
+    #새로운 회원이면 - "detail": "가입된 회원 정보가 없습니다. 회원가입 해주세요."
     else:
-        user_data = {
-            'registered':0,
-            'social_id': social_id,
-            'social_platform':social_platform
-        }
-        return JsonResponse(user_data)
+        raise exceptions.NewMemberException
 
 @api_view(["GET"])
 def set_logout(request):
