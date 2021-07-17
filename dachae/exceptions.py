@@ -23,6 +23,10 @@ class InvalidUserIdException(APIException):
     status_code = 401
     default_detail = "해당 id와 일치하는 회원정보가 없습니다."
 
+class ServerConnectionFailedException(APIException):
+    status_code = 500
+    default_detail = "소셜 서버와 통신 중 오류가 발생했습니다."
+
 class InvalidAccessTokenException(APIException):
     status_code = 500
     default_detail = "Access Token이 유효하지 않습니다."
