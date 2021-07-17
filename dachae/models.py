@@ -132,7 +132,8 @@ class TbUploadInfo(models.Model):
 class TbUserAuth(models.Model):
     auth_id = models.AutoField(primary_key=True)
     user_id = models.PositiveIntegerField()
-    access_token = models.CharField(max_length=100)
+    access_token = models.CharField(max_length=200)
+    refresh_token = models.CharField(max_length=200, blank=True, null=True)
     expire_time = models.DateTimeField()
     created_time = models.DateTimeField()
     modified_time = models.DateTimeField(blank=True, null=True)
@@ -146,7 +147,7 @@ class TbUserInfo(models.Model):
     user_id = models.AutoField(primary_key=True)
     social_platform = models.CharField(max_length=50, blank=True, null=True)
     social_id = models.PositiveIntegerField()
-    user_nm = models.CharField(max_length=50)
+    user_nm = models.CharField(max_length=50, blank=True, null=True)
     birthday_date = models.DateField(blank=True, null=True)
     email = models.CharField(max_length=50, blank=True, null=True)
     gender = models.CharField(max_length=50, blank=True, null=True)
