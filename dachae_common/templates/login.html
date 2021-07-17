@@ -12,12 +12,10 @@
 {%else%}
 <!-- receiving from django-allauth -->    
 <a href="https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={{naver_login_data.CLIENT_ID}}&redirect_uri={{naver_login_data.REDIRECT_URI}}&state={{naver_login_data.STATE}}">네이버로 계속하기</a>
-<a href="https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id={{naver_login_data.CLIENT_ID}}&redirect_uri={{naver_login_data.SIGNUP_REDIRECT_URI}}&state={{naver_login_data.STATE}}">네이버로 회원가입하기</a>
 {% comment %} <a href="https://nid.naver.com/oauth2.0/token?grant_type=authorization_code&client_id={{naver_login_data.CLIENT_ID}&client_secret={{naver_login_data.STATE}}">인증토큰 요청</a> {% endcomment %}
 <br>
 <!-- receiving from users/urls.py -->    
 {%csrf_token%}
 <a href="https://kauth.kakao.com/oauth/authorize?client_id={{login_data.REST_API_KEY}}&redirect_uri={{login_data.REDIRECT_URI}}&response_type=code">카카오 로그인</a>
-<a href="https://kauth.kakao.com/oauth/authorize?client_id={{login_data.REST_API_KEY}}&redirect_uri={{login_data.SIGNUP_REDIRECT_URI}}&response_type=code">카카오 회원가입</a>
 <a href="https://kauth.kakao.com/oauth/logout?client_id={{logout_data.REST_API_KEY}}&logout_redirect_uri={{logout_data.LOGOUT_REDIRECT_URI}}">카카오 로그아웃</a>
 {%endif%}
