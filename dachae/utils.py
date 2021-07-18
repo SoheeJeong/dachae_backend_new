@@ -5,6 +5,7 @@ from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
 from botocore.errorfactory import ClientError
 import datetime
+import requests
 
 from .models import TbUserAuth,TbUserInfo,TbArtworkInfo
 import dachae.exceptions as exceptions
@@ -163,6 +164,33 @@ def check_token_isvalid(access_token,user_id,restrict=True):
 
     return "valid user"
 
+def get_access_token(access_code,social_platform):
+    if social_platform == "kakao":
+        url = 'https://kauth.kakao.com/oauth/token'
+        headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
+        body = {
+            'grant_type' : 'authorization_code',
+            'client_id' : os.getenv("KAKAO_APP_KEY"),
+            #'redirect_uri' : os.getenv("KAKAO_LOGIN_REDIRECT_URI"),
+            'code' : access_code
+        }
+        token_kakao_response = requests.post(url,headers=headers,data=body)
+        kakao_response_result = json.loads(token_kakao_response.text)
+        return kakao_response_result
+    elif social_platform == "naver":
+        url = 'https://nid.naver.com/oauth2.0/token'
+        headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
+        body = {
+            'grant_type' : 'authorization_code',
+            'client_id' : os.getenv("NAVER_APP_KEY"),
+            'client_secret' : os.getenv("NAVER_API_SECRET"),
+            'redirect_uri' : os.getenv("NAVER_LOGIN_REDIRECT_URI"),
+            'code' : access_code
+        }
+        token_naver_response = requests.post(url,headers=headers,data=body)
+        naver_response_result = json.loads(token_naver_response.text)
+        return naver_response_result
+        
 def get_expire_time_from_expires_in(expires_in):
     ts = datetime.datetime.now() + datetime.timedelta(seconds=int(expires_in))
     expire_time = ts.strftime('%Y-%m-%d %H:%M:%S')

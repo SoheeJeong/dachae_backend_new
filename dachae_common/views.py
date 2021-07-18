@@ -15,7 +15,7 @@ from datetime import datetime
 
 from dachae.models import TbUserInfo,TbUserLog,TbUserAuth
 from dachae import exceptions
-from dachae.utils import age_range_calulator,get_expire_time_from_expires_in,check_token_isvalid
+from dachae.utils import age_range_calulator,get_expire_time_from_expires_in,check_token_isvalid,get_access_token
 
 
 #TODO: service 구조로 refactoring
@@ -54,16 +54,7 @@ def set_kakao_signup(request):
     social_platform = "kakao"
     #2.access token 요청
     try:
-        url = 'https://kauth.kakao.com/oauth/token'
-        headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
-        body = {
-            'grant_type' : 'authorization_code',
-            'client_id' : os.getenv("KAKAO_APP_KEY"),
-            'redirect_uri' : os.getenv("REDIRECT_URI"),
-            'code' : access_code
-        }
-        token_kakao_response = requests.post(url,headers=headers,data=body)
-        kakao_response_result = json.loads(token_kakao_response.text)
+        kakao_response_result = get_access_token(access_code,"kakao")
         access_token = kakao_response_result["access_token"]
         refresh_token = kakao_response_result["refresh_token"]
         expires_in = kakao_response_result["expires_in"]
@@ -145,17 +136,7 @@ def set_naver_signup(request):
 
     #2. access token 요청
     try:
-        url = 'https://nid.naver.com/oauth2.0/token'
-        headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
-        body = {
-            'grant_type' : 'authorization_code',
-            'client_id' : os.getenv("NAVER_APP_KEY"),
-            'client_secret' : os.getenv("NAVER_API_SECRET"),
-            'redirect_uri' : os.getenv("NAVER_LOGIN_REDIRECT_URI"),
-            'code' : access_code
-        }
-        token_naver_response = requests.post(url,headers=headers,data=body)
-        naver_response_result = json.loads(token_naver_response.text)
+        naver_response_result = get_access_token(access_code,"naver")
         access_token = naver_response_result["access_token"]
         refresh_token = naver_response_result["refresh_token"]
         expires_in = naver_response_result["expires_in"]
@@ -233,16 +214,7 @@ def set_kakao_login(request):
     social_platform = "kakao"
     #2.access token 요청
     try:
-        url = 'https://kauth.kakao.com/oauth/token'
-        headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
-        body = {
-            'grant_type' : 'authorization_code',
-            'client_id' : os.getenv("KAKAO_APP_KEY"),
-            'redirect_uri' : os.getenv("KAKAO_LOGIN_REDIRECT_URI"),
-            'code' : access_code
-        }
-        token_kakao_response = requests.post(url,headers=headers,data=body)
-        kakao_response_result = json.loads(token_kakao_response.text)
+        kakao_response_result = get_access_token(access_code,"kakao")
         access_token = kakao_response_result["access_token"]
         refresh_token = kakao_response_result["refresh_token"]
         expires_in = kakao_response_result["expires_in"]
@@ -312,18 +284,7 @@ def set_naver_login(request):
 
     #2. access token 요청
     try:
-        url = 'https://nid.naver.com/oauth2.0/token'
-        headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
-        body = {
-            'grant_type' : 'authorization_code',
-            'client_id' : os.getenv("NAVER_APP_KEY"),
-            'client_secret' : os.getenv("NAVER_API_SECRET"),
-            #'redirect_uri' : os.getenv("NAVER_LOGIN_REDIRECT_URI"),
-            'code' : access_code
-        }
-        token_naver_response = requests.post(url,headers=headers,data=body)
-        naver_response_result = json.loads(token_naver_response.text)
-        print(naver_response_result)
+        naver_response_result = get_access_token(access_code,"naver")
         access_token = naver_response_result["access_token"]
         refresh_token = naver_response_result["refresh_token"]
         expires_in = naver_response_result["expires_in"]
