@@ -119,7 +119,7 @@ def check_token_isvalid(access_token,user_id,restrict=True):
     '''
     로그인이 필요없는 기능인 경우 restrict=False 로 설정
     '''
-    if user_id==None and access_token==None:
+    if not TbUserAuth.objects.filter(user_id=user_id,access_token=access_token).exists():
         return "not logged"
     
     if (user_id and access_token) == None:
@@ -206,7 +206,7 @@ def get_social_user_info(access_token,social_platform):
         login_response = requests.post(url,headers=headers,data=body)
         user_info_response = json.loads(login_response.text)
         return user_info_response
-        
+
     elif social_platform == "naver":
         url = "https://openapi.naver.com/v1/nid/me"
         header = "Bearer " + access_token # Bearer 다음에 공백 추가
