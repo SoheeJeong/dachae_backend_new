@@ -75,9 +75,6 @@ def set_kakao_signup(request):
     if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
         raise exceptions.ExistMemberException
 
-    # age_range = age_range_calulator(birthday_date) 
-    expire_time = get_expire_time_from_expires_in(expires_in)
-
     try:
         #insert into user DB
         user = TbUserInfo(
@@ -94,6 +91,7 @@ def set_kakao_signup(request):
         user_id = user.user_id
         #access token 정보 저장
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        expire_time = get_expire_time_from_expires_in(expires_in)
         userauth = TbUserAuth(
             user_id = user_id,
             access_token = access_token,
@@ -148,9 +146,6 @@ def set_naver_signup(request):
     if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
         raise exceptions.ExistMemberException
 
-    # age_range = age_range_calulator(birthday_date) 
-    expire_time = get_expire_time_from_expires_in(expires_in)
-
     try:
         #insert into user DB
         user = TbUserInfo(
@@ -167,6 +162,8 @@ def set_naver_signup(request):
         user_id = user.user_id
         #access token 정보 저장
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # age_range = age_range_calulator(birthday_date) 
+        expire_time = get_expire_time_from_expires_in(expires_in)
         userauth = TbUserAuth(
             user_id = user_id,
             access_token = access_token,
