@@ -219,10 +219,10 @@ def set_kakao_login(request):
     #이미 존재하는 회원이면 - 로그인 실행
     if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
         user = TbUserInfo.objects.get(social_id=social_id)
-        #TODO: 예외처리 추가
-        #access token 정보 저장
-        if TbUserAuth.objects.filter(user_id=user.user_id).exists(): #이미 로그인된 사용자
+        #이미 로그인된 사용자
+        if TbUserAuth.objects.filter(user_id=user.user_id).exists(): 
             raise exceptions.LoggedException
+        #권한정보 저장
         expire_time = get_expire_time_from_expires_in(expires_in)
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         TbUserAuth(
@@ -232,7 +232,7 @@ def set_kakao_login(request):
             expire_time = expire_time,
             created_time = server_time
         ).save()
-        #권한정보, 사용자정보 넘겨주기
+        #사용자정보 넘겨주기
         user_data = {
             'access_token':access_token,
             'refresh_token':refresh_token,
@@ -242,8 +242,7 @@ def set_kakao_login(request):
             'social_id': user.social_id,
         }
         return JsonResponse(user_data)
-    #새로운 회원이면 - registered=0 으로 세팅 (바로 회원가입 페이지로)
-    else:
+    else: #새로운 회원
         raise exceptions.NewMemberException
 
 @api_view(["GET"])
@@ -277,7 +276,6 @@ def set_naver_login(request):
     #이미 존재하는 회원이면 - 로그인 실행
     if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
         user = TbUserInfo.objects.get(social_platform=social_platform,social_id=social_id)
-        #TODO: 예외처리 추가
         #access token 정보 저장
         if TbUserAuth.objects.filter(user_id=user.user_id).exists():
             raise exceptions.LoggedException
@@ -300,6 +298,8 @@ def set_naver_login(request):
             'social_id': user.social_id,
         }
         return JsonResponse(user_data)
+    else: #새로운 회원
+        raise exceptions.NewMemberException
 
 @api_view(["GET"])
 def set_logout(request):
