@@ -80,7 +80,7 @@ def set_kakao_signup(request):
 
     try:
         #insert into user DB
-        user_info = TbUserInfo(
+        user = TbUserInfo(
             social_platform = social_platform,
             social_id = social_id,
             # user_nm = user_nm,
@@ -90,17 +90,18 @@ def set_kakao_signup(request):
             # level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
             # role = "member"
         )
-        user_info.save()
-        user_id = user_info.user_id
+        user.save()
+        user_id = user.user_id
         #access token 정보 저장
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        TbUserAuth(
+        userauth = TbUserAuth(
             user_id = user_id,
             access_token = access_token,
             refresh_token = refresh_token,
             expire_time = expire_time,
             created_time = server_time
-        ).save()
+        )
+        userauth.save()
     except:
        raise exceptions.DataBaseException
 
@@ -152,7 +153,7 @@ def set_naver_signup(request):
 
     try:
         #insert into user DB
-        user_info = TbUserInfo(
+        user = TbUserInfo(
             social_platform = "naver",
             social_id = social_id,
             #user_nm = user_nm,
@@ -162,17 +163,18 @@ def set_naver_signup(request):
             #level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
             #role = "member"
         )
-        user_info.save()
-        user_id = user_info.user_id
+        user.save()
+        user_id = user.user_id
         #access token 정보 저장
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        TbUserAuth(
+        userauth = TbUserAuth(
             user_id = user_id,
             access_token = access_token,
             refresh_token = refresh_token,
             expire_time = expire_time,
             created_time = server_time
-        ).save()        
+        )
+        userauth.save()       
     except:
        raise exceptions.DataBaseException
 
@@ -181,7 +183,7 @@ def set_naver_signup(request):
         'access_token':access_token,
         'refresh_token':refresh_token,
         'expires_in':expires_in,
-        'user_id': user.user_id,
+        'user_id': user_id,
         'social_platform':user.social_platform,
         'social_id': user.social_id,
     }
