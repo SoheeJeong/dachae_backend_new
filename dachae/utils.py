@@ -4,7 +4,10 @@ import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
 from botocore.errorfactory import ClientError
+
 import datetime
+import requests
+import urllib
 
 from .models import TbUserAuth,TbUserInfo,TbArtworkInfo,TbLabelInfo,TbProductInfo,TbCompanyInfo
 import dachae.exceptions as exceptions
@@ -162,7 +165,7 @@ def check_token_isvalid(access_token,user_id,restrict=True):
     '''
     로그인이 필요없는 기능인 경우 restrict=False 로 설정
     '''
-    if user_id==None and access_token==None:
+    if not TbUserAuth.objects.filter(user_id=user_id,access_token=access_token).exists():
         return "not logged"
     
     if (user_id and access_token) == None:
@@ -208,6 +211,58 @@ def check_token_isvalid(access_token,user_id,restrict=True):
         raise exceptions.InvalidUserIdException
 
     return "valid user"
+
+def get_access_token(access_code,social_platform):
+    if social_platform == "kakao":
+        url = 'https://kauth.kakao.com/oauth/token'
+        headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
+        body = {
+            'grant_type' : 'authorization_code',
+            'client_id' : os.getenv("KAKAO_APP_KEY"),
+            #'redirect_uri' : os.getenv("KAKAO_LOGIN_REDIRECT_URI"),
+            'code' : access_code
+        }
+        token_kakao_response = requests.post(url,headers=headers,data=body)
+        kakao_response_result = json.loads(token_kakao_response.text)
+        return kakao_response_result
+    elif social_platform == "naver":
+        url = 'https://nid.naver.com/oauth2.0/token'
+        headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
+        body = {
+            'grant_type' : 'authorization_code',
+            'client_id' : os.getenv("NAVER_APP_KEY"),
+            'client_secret' : os.getenv("NAVER_API_SECRET"),
+            'redirect_uri' : os.getenv("NAVER_LOGIN_REDIRECT_URI"),
+            'code' : access_code
+        }
+        token_naver_response = requests.post(url,headers=headers,data=body)
+        naver_response_result = json.loads(token_naver_response.text)
+        return naver_response_result
+
+def get_social_user_info(access_token,social_platform):
+    if social_platform == "kakao":
+        url = 'https://kapi.kakao.com/v2/user/me'
+        headers = {
+            'Authorization':f'Bearer {access_token}',
+            'Content-type':'application/x-www-form-urlencoded;charset=utf-8',
+        }
+        body = {
+            #'property_keys':'["properties.nickname","properties.profile_image","properties.thumbnail_image"]'
+        }
+        login_response = requests.post(url,headers=headers,data=body)
+        user_info_response = json.loads(login_response.text)
+        return user_info_response
+
+    elif social_platform == "naver":
+        url = "https://openapi.naver.com/v1/nid/me"
+        header = "Bearer " + access_token # Bearer 다음에 공백 추가
+        request = urllib.request.Request(url)
+        request.add_header("Authorization", header)
+        response = urllib.request.urlopen(request)
+        rescode = response.getcode()
+        if(rescode==200):
+            user_info_response = json.loads(response.read().decode('utf-8'))["response"]
+        return user_info_response
 
 def get_expire_time_from_expires_in(expires_in):
     ts = datetime.datetime.now() + datetime.timedelta(seconds=int(expires_in))
