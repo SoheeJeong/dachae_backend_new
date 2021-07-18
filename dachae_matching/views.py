@@ -33,78 +33,6 @@ SAMPLE_FOLDER_NAME = os.getenv("SAMPLE_FOLDER_NAME")
 
 ##### 검색, 업로드, 매칭 #####
 @api_view(["GET"])
-def get_best_image_list(request):
-    '''
-    메인화면에서 샘플사진 리스트 로드
-    param example) start=0&end=2 이면 index 0,1,2 사진 로드 (1,2,3 번째 사진 로드)
-    '''
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    user_id = request.GET.get('user_id',None)
-    start = request.GET.get("start",0)  
-    end = request.GET.get("end",None)  
-
-    # user validation check
-    check_token_isvalid(access_token,user_id)
-
-    try:
-        best_image_list = models.TbSampleList.objects.values("sample_path","sample_id","img_id")
-        end = len(best_image_list) if not end else min(len(best_image_list),int(end)+1)
-        data_list = best_image_list[int(start):end+1]
-        #s3 path 로 바꾸기
-        for i in range(len(data_list)):
-            img_key = data_list[i]["sample_path"]
-            data_list[i]["sample_path"] = get_public_url(ARTWORK_BUCKET_NAME,SAMPLE_FOLDER_NAME+img_key)
-    except:
-        raise exceptions.DataBaseException
-    
-    data = {
-            "data" : data_list,
-            }
-    return Response(data)
-
-@csrf_exempt
-@api_view(["POST"])
-def get_picture_filtered_result(request):
-    '''
-    키워드 및 느낌라벨로 명화 검색
-    '''
-    #TODO: 라벨 최소개수 1개 지정
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    body = json.loads(request.body.decode("utf-8"))
-    label_list = body["label_list"]
-    user_id = None if "user_id" not in body else body["user_id"]
-
-    # user validation check
-    check_token_isvalid(access_token,user_id)
-    
-    if len(label_list)==0:
-        result_image_list = models.TbArtworkInfo.objects.values("img_path","img_id")
-
-    else:
-        #TODO: filter 기준 정립 필요
-        result_image_list = get_label_filtered_result(label_list)
-        
-    #s3 파일 경로 얻기
-    for i in range(len(result_image_list)):
-        img_key = result_image_list[i]["img_path"] #get key
-        result_image_list[i]["img_path"] = get_public_url(ARTWORK_BUCKET_NAME,img_key)
-
-    #TODO: 추후에 sorting 기준 추가 (인기순, 가격순 등)
-    
-    #TODO: save into user log
-    if user_id is None or not models.TbUserInfo.objects.filter(user_id=user_id).exists():
-        print("save into user log with user=null")
-    else:
-        print("save into user log with user")
-        
-    data = {
-        "data" : result_image_list,
-    }
-    return Response(data)
-
-@api_view(["GET"])
 def get_picture_detail_info(request):
     '''
     명화 1개의 상세정보 가져오기 (이미지 클릭 시 명화 상세정보 페이지로 이동)
@@ -165,37 +93,10 @@ def get_picture_detail_info(request):
             }
     return Response(data)
 
-@api_view(["GET"])
-def get_label_list(request):
-    '''
-    느낌라벨 리스트 가져오기
-    param example) start=0&end=2 이면 index 0,1,2 라벨 로드 (1,2,3 번째 라벨 로드)
-    '''
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    user_id = request.GET.get('user_id',None)
-    start = request.GET.get("start",0)  
-    end = request.GET.get("end",None)  
-
-    # user validation check
-    check_token_isvalid(access_token,user_id)
-
-    try:
-        label_list = models.TbLabelInfo.objects.values("label_nm","label_id")
-    except:
-        raise exceptions.DataBaseException
-    
-    end = len(label_list) if not end else min(len(label_list),int(end)+1)
-    data_list = label_list[int(start):end]
-    data = {
-            "data" : data_list,
-            }
-
-    return Response(data)
 
 @csrf_exempt
 @api_view(["POST"])
-def set_user_image_upload(request):
+def set_upload_and_recommend(request):
     '''
     사용자 로컬이미지 업로드 -> set into storage -> 로컬데이터 삭제
     '''
@@ -248,45 +149,17 @@ def set_user_image_upload(request):
     except: 
         raise exceptions.DataBaseException
 
-    data = {
-            "file_addr" : s3_url,
-            "room_img" : key,
-            "upload_id" : upload_id,
-            }
-
-    return Response(data)
-
-@csrf_exempt
-@api_view(["POST"])
-def exec_recommend(request):
     '''
-    매칭 수행
+    매칭 수행 (exec recommend)
     '''
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    body = json.loads(request.body.decode("utf-8"))
-    user_id = None if "user_id" not in body else body["user_id"]
-    upload_id = None if "upload_id" not in body else body["upload_id"] 
-    room_img = None if "room_img" not in body else body["room_img"] 
+    file_addr = s3_url
+    room_img = key
     
     if not room_img or not upload_id:
         raise exceptions.ParameterMissingException
 
     # user validation check
-    check_token_isvalid(access_token,user_id)
-
-    label_list = body["label_list"]
-    #TODO: 라벨 최소개수 조건 검사
-    if len(label_list) > MAX_LABEL_NUM:
-        raise exceptions.TooMuchLabelSeletedException
-
-    label_nm_list, label_id_list = [],[]
-    for i in range(MAX_LABEL_NUM):
-        if i<len(label_list):
-            label_nm_list.append(label_list[i]["label_nm"]) 
-            label_id_list.append(label_list[i]["label_id"])
-        else:
-            label_id_list.append(None)   
+    #check_token_isvalid(access_token,user_id)
 
     upload_object = models.TbUploadInfo.objects.filter(upload_id=upload_id)
     if not upload_object.exists():
@@ -307,9 +180,9 @@ def exec_recommend(request):
         s3connection.save_file_into_s3(img_data,USER_BUCKET_NAME,clt_key)
         clt_url = s3connection.get_presigned_url(USER_BUCKET_NAME,clt_key)
 
-        #선택된 label과 clustering 결과 이미지 path를 models.Tb_upload_info에 저장
+        #clustering 결과 이미지 path를 models.Tb_upload_info에 저장
         try:
-            upload_object.update(clustering_img=clt_key,label1_id=label_id_list[0],label2_id=label_id_list[1],label3_id=label_id_list[2])
+            upload_object.update(clustering_img=clt_key)
         except:
             raise exceptions.DataBaseException
         
@@ -319,151 +192,40 @@ def exec_recommend(request):
         raise exceptions.RecommendationException
 
     #라벨 필터링 과정
-    analog = get_label_filtered_result(label_list,analog)
-
-    if user_id:
-        #TODO: user log 추가
-        show_range = "all"
-    else:
-        #TODO: user log 추가 -> user=null
-        show_range = "part"
+    #analog = get_label_filtered_result(label_list,analog)
 
     data = {
-        'show_range':show_range,
         'upload_id':upload_object.values("upload_id")[0]["upload_id"],
         'room_img_url':room_img_url,
         'clustering_result_url':clt_url,
-        'chosen_label':label_nm_list,
         'recommend_images':analog
     }
-    return Response(data)
-
-
-##### 찜, 구매 #####
-
-@api_view(["GET"])
-def set_wish_list(request):
-    # server time 
-    server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # get param
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    user_id = request.GET.get("user_id",None)
-    img_id = request.GET.get("img_id",None)
-
-    # param check
-    if not img_id:
-        raise exceptions.ParameterMissingException
-    
-    if not models.TbArtworkInfo.objects.filter(img_id=img_id).exists():
-        raise exceptions.NoImageInfoException
-
-    #valid user 인지 검사
-    validation = check_token_isvalid(access_token,user_id)
-    if validation == "not logged":
-        raise exceptions.LoginRequiredException
-
-    # img_id, user_id, server_time 를 wishlist table 에 넣기
-    wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id)
-    if not wish_item.exists(): 
-        #존재하지 않는 row 일 경우에만 -> 새로 table에 삽입
-        models.TbWishlistInfo.objects.create(user_id=user_id,img_id=img_id,server_time=server_time)
-
-    #사용자의 wishlist 정보 반환
-    user_total_wishlist = models.TbWishlistInfo.objects.filter(user_id=user_id).values("img_id")
-    user_wishlist = []
-    for wish in user_total_wishlist:
-        user_wishlist.append(wish["img_id"])
-
-    #TODO: user log 추가
-       
-    data = {
-            "user_wishlist":user_wishlist,
-            }
 
     return Response(data)
 
-@api_view(["GET"])
-def del_wish_list(request):
-    # get param
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    user_id = request.GET.get("user_id",None)
-    img_id = request.GET.get("img_id",None)
-
-    # param check
-    if not img_id:
-        raise exceptions.ParameterMissingException
-    
-    #valid user 인지 검사
-    validation = check_token_isvalid(access_token,user_id)
-    if validation == "not logged":
-        raise exceptions.LoginRequiredException
-
-    # wishlist table 에서 삭제하기
-    try:
-        wish_item = models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id)
-        if wish_item.exists(): #존재하는 item일 경우에만
-            models.TbWishlistInfo.objects.filter(user_id=user_id,img_id=img_id).delete() #삭제 수행
-    except: 
-        raise exceptions.DataBaseException
-
-    #TODO: user log 추가
-
-    data = {
-            "result": "succ"
-            }
-    return Response(data)
 
 @api_view(["GET"])
-def load_purchase_link(request):
-    # server time 
-    server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # get params
+def get_default_recommend(request):
+    '''
+    upload를 거치지 않고 바로 Recommendations 탭을 눌렀을 때 기본 이미지 추천
+    '''
     header = request.headers
     access_token = header['Authorization'] if 'Authorization' in header else None
-    user_id = request.GET.get("user_id",None)
-    img_id = request.GET.get("img_id",None)
-    upload_id = request.GET.get("upload_id",None)
-
-    # param check
-    if not img_id:
-        raise exceptions.ParameterMissingException
+    user_id = request.GET.get('user_id',None)
 
     # user validation check
     check_token_isvalid(access_token,user_id)
+    
+    #load artwork data
+    pic_data = models.TbArtworkInfo.objects.values('img_id','img_path','author','title','h1','s1','v1','h2','s2','v2','h3','s3','v3','label1_id','label2_id','label3_id')
 
     try:
-        # purchase_info table 에 새로운 row로 구매정보 저장
-        if user_id:
-            purchase_obj = models.TbPurchaseInfo(user_id=user_id, img_id=img_id, server_time=server_time)
-            purchase_obj.save()
-        else:
-            purchase_obj = models.TbPurchaseInfo(img_id=img_id, server_time=server_time)
-            purchase_obj.save()
-        purchase_id = purchase_obj.purchase_id
-
-        # matching 후 구매 시 models.models.Tb_UPLOAD_INFO 에 purchase_id 저장
-        if upload_id and models.TbUploadInfo.objects.filter(upload_id=upload_id).exists():
-            upload_info = models.TbUploadInfo.objects.get(upload_id=upload_id)
-            upload_info.purchase_id = purchase_id
-            upload_info.save()
-        # 구매 링크
-        try:
-            product_id = models.TbArtworkInfo.objects.filter(img_id=img_id).values("product_id")[0]["product_id"]
-            purchase_url = models.TbProductInfo.objects.filter(product_id=product_id).values("purchase_url")[0]
-        except:
-            raise exceptions.NoProductInfoException
+        recommendation = Recommendation(None,pic_data,default=True)
+        analog = convert_recommended_img_path_into_s3_path(recommendation.recommend_pic())
     except:
-        raise exceptions.DataBaseException
-
-    #TODO: save into user log
-    if user_id is None or not models.TbUserInfo.objects.filter(user_id=user_id).exists():
-        print("save into user log with user=null")
-    else:
-        print("save into user log with user")
+        raise exceptions.RecommendationException
 
     data = {
-        "purchase_link": purchase_url["purchase_url"]
-        }
+            'recommend_images': analog
+            }
     return Response(data)

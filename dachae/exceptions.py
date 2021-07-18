@@ -5,10 +5,6 @@ class NewMemberException(APIException):
     status_code = 401
     default_detail = "가입된 회원 정보가 없습니다. 회원가입 해주세요."
 
-class ExistMemberException(APIException):
-    status_code = 401
-    default_detail = "이미 가입된 회원 정보가 있습니다. 로그인 해주세요."
-
 class LoginRequiredException(APIException):
     status_code = 401
     default_detail = "로그인이 필요한 기능입니다. 로그인 해주세요."
@@ -29,10 +25,6 @@ class LeftMemberException(APIException):
 class InvalidUserIdException(APIException):
     status_code = 401
     default_detail = "해당 id와 일치하는 회원정보가 없습니다."
-
-class ServerConnectionFailedException(APIException):
-    status_code = 500
-    default_detail = "소셜 서버와 통신 중 오류가 발생했습니다."
 
 class InvalidAccessTokenException(APIException):
     status_code = 500

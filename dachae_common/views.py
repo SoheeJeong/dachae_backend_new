@@ -45,7 +45,8 @@ def login_page(request):
 @api_view(["GET"])
 def set_kakao_signup(request):
     '''
-    카카오 회원가입 실행
+    새로운 회원 회원가입 실행
+    소셜로그인에서 넘어온 회원가입 페이지
     '''
     #1.인증코드 요청
     access_code = request.GET.get('code',None)
@@ -80,29 +81,28 @@ def set_kakao_signup(request):
     try:
         #insert into user DB
         user_info = TbUserInfo(
-            social_platform = "kakao",
+            social_platform = social_platform,
             social_id = social_id,
-            #user_nm = user_nm,
-            #email = email,
+            user_nm = user_nm,
+            email = email,
             rgst_date = datetime.now(),
-            #state = state,
-            #level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
-            #role = "member"
+            state = "active",
+            level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
+            role = "member"
         )
         user_info.save()
         user_id = user_info.user_id
         #access token 정보 저장
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(refresh_token)
         TbUserAuth(
             user_id = user_id,
             access_token = access_token,
-            refresh_token = refresh_token,
             expire_time = expire_time,
             created_time = server_time
-        ).save()        
+        ).save()
     except:
        raise exceptions.DataBaseException
+
 
     response = {
         "result": "succ",
@@ -203,25 +203,23 @@ def set_kakao_login(request):
         social_id = user_info_response["id"] if "id" in user_info_response else None
         if not social_id:  raise exceptions.InvalidAccessTokenException
     except:
-        raise exceptions.ServerConnectionFailedException
+        raise exceptions.InvalidAccessTokenException
     
-    #이미 존재하는 회원이면 - 로그인 실행, 메인페이지로 redirect
+    #이미 존재하는 회원이면 - 로그인 실행
     if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
-        user = TbUserInfo.objects.get(social_platform=social_platform,social_id=social_id)
+        user = TbUserInfo.objects.get(social_id=social_id)
         #jwt_token = jwt.encode({'id':user.user_id},settings.SECRET_KEY,algorithm='HS256').decode('utf-8')
         #TODO: 예외처리 추가
        
         #권한정보, 사용자정보 넘겨주기
         user_data = {
-            'access_token' : access_token,
-            'refresh_token' : refresh_token,
-            'expire_in' : expires_in,
+            'registered':1, #이미 회원가입된 사용자 -> 추가 회원가입 페이지 불필요, 메인페이지로 redirect
             'user_id': user.user_id,
             'social_platform':user.social_platform,
             'social_id': user.social_id,
-            # 'user_nm' : user.user_nm,
-            # 'level' : user.level, #default free 
-            # 'role' : user.role,
+            'user_nm' : user.user_nm,
+            'level' : user.level, #default free 
+            'role' : user.role,
         }
         #access token 정보 저장
         if TbUserAuth.objects.filter(user_id=user.user_id).exists(): #이미 로그인된 사용자
@@ -238,7 +236,7 @@ def set_kakao_login(request):
 
         return JsonResponse(user_data)
 
-    #새로운 회원이면 - "detail": "가입된 회원 정보가 없습니다. 회원가입 해주세요."
+    #새로운 회원이면 - registered=0 으로 세팅 (바로 회원가입 페이지로)
     else:
         raise exceptions.NewMemberException
 
@@ -278,12 +276,9 @@ def set_naver_login(request):
    
         #권한정보, 사용자정보 넘겨주기
         user_data = {
-            'access_token' : access_token,
-            'refresh_token' : refresh_token,
-            'expires_in' : expires_in,
-            'user_id': user.user_id,
-            'social_platform':user.social_platform,
-            'social_id': user.social_id,
+            'registered':0,
+            'social_id': social_id,
+            'social_platform':social_platform
         }
         #access token 정보 저장
         if TbUserAuth.objects.filter(user_id=user.user_id).exists():
@@ -299,10 +294,6 @@ def set_naver_login(request):
         ).save()
         return JsonResponse(user_data)
 
-    #새로운 회원이면 - "detail": "가입된 회원 정보가 없습니다. 회원가입 해주세요."
-    else:
-        raise exceptions.NewMemberException
-    
 @api_view(["GET"])
 def set_logout(request):
     '''
