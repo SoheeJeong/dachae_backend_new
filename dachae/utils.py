@@ -194,18 +194,29 @@ def get_access_token(access_code,social_platform):
         return naver_response_result
 
 def get_social_user_info(access_token,social_platform):
-    # if social_platform == "kakao":
+    if social_platform == "kakao":
+        url = 'https://kapi.kakao.com/v2/user/me'
+        headers = {
+            'Authorization':f'Bearer {access_token}',
+            'Content-type':'application/x-www-form-urlencoded;charset=utf-8',
+        }
+        body = {
+            #'property_keys':'["properties.nickname","properties.profile_image","properties.thumbnail_image"]'
+        }
+        login_response = requests.post(url,headers=headers,data=body)
+        user_info_response = json.loads(login_response.text)
+        return user_info_response
         
-    # elif social_platform == "naver":
-    url = "https://openapi.naver.com/v1/nid/me"
-    header = "Bearer " + access_token # Bearer 다음에 공백 추가
-    request = urllib.request.Request(url)
-    request.add_header("Authorization", header)
-    response = urllib.request.urlopen(request)
-    rescode = response.getcode()
-    if(rescode==200):
-        user_info_response = json.loads(response.read().decode('utf-8'))["response"]
-    return user_info_response
+    elif social_platform == "naver":
+        url = "https://openapi.naver.com/v1/nid/me"
+        header = "Bearer " + access_token # Bearer 다음에 공백 추가
+        request = urllib.request.Request(url)
+        request.add_header("Authorization", header)
+        response = urllib.request.urlopen(request)
+        rescode = response.getcode()
+        if(rescode==200):
+            user_info_response = json.loads(response.read().decode('utf-8'))["response"]
+        return user_info_response
 
 def get_expire_time_from_expires_in(expires_in):
     ts = datetime.datetime.now() + datetime.timedelta(seconds=int(expires_in))

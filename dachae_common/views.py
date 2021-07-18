@@ -67,16 +67,7 @@ def set_kakao_signup(request):
     
     #3.사용자 정보 요청
     try:
-        url = 'https://kapi.kakao.com/v2/user/me'
-        headers = {
-            'Authorization':f'Bearer {access_token}',
-            'Content-type':'application/x-www-form-urlencoded;charset=utf-8',
-        }
-        body = {
-            #'property_keys':'["properties.nickname","properties.profile_image","properties.thumbnail_image"]'
-        }
-        login_response = requests.post(url,headers=headers,data=body)
-        user_info_response = json.loads(login_response.text)
+        user_info_response = get_social_user_info(access_token,"kakao")
         social_id = user_info_response["id"] if "id" in user_info_response else None
         if not social_id:
             raise exceptions.InvalidAccessTokenException
@@ -221,16 +212,7 @@ def set_kakao_login(request):
     
     #3.사용자 정보 요청
     try:
-        url = 'https://kapi.kakao.com/v2/user/me'
-        headers = {
-            'Authorization':f'Bearer {access_token}',
-            'Content-type':'application/x-www-form-urlencoded;charset=utf-8',
-        }
-        body = {
-            #'property_keys':'["properties.nickname","properties.profile_image","properties.thumbnail_image"]'
-        }
-        login_response = requests.post(url,headers=headers,data=body)
-        user_info_response = json.loads(login_response.text)
+        user_info_response = get_social_user_info(access_token,"kakao")
         social_id = user_info_response["id"] if "id" in user_info_response else None
         if not social_id:
             raise exceptions.InvalidAccessTokenException
