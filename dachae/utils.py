@@ -4,8 +4,10 @@ import boto3
 from boto3.s3.transfer import S3Transfer
 from botocore.client import Config
 from botocore.errorfactory import ClientError
+
 import datetime
 import requests
+import urllib
 
 from .models import TbUserAuth,TbUserInfo,TbArtworkInfo
 import dachae.exceptions as exceptions
@@ -190,7 +192,21 @@ def get_access_token(access_code,social_platform):
         token_naver_response = requests.post(url,headers=headers,data=body)
         naver_response_result = json.loads(token_naver_response.text)
         return naver_response_result
+
+def get_social_user_info(access_token,social_platform):
+    # if social_platform == "kakao":
         
+    # elif social_platform == "naver":
+    url = "https://openapi.naver.com/v1/nid/me"
+    header = "Bearer " + access_token # Bearer 다음에 공백 추가
+    request = urllib.request.Request(url)
+    request.add_header("Authorization", header)
+    response = urllib.request.urlopen(request)
+    rescode = response.getcode()
+    if(rescode==200):
+        user_info_response = json.loads(response.read().decode('utf-8'))["response"]
+    return user_info_response
+
 def get_expire_time_from_expires_in(expires_in):
     ts = datetime.datetime.now() + datetime.timedelta(seconds=int(expires_in))
     expire_time = ts.strftime('%Y-%m-%d %H:%M:%S')

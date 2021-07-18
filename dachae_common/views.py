@@ -15,7 +15,7 @@ from datetime import datetime
 
 from dachae.models import TbUserInfo,TbUserLog,TbUserAuth
 from dachae import exceptions
-from dachae.utils import age_range_calulator,get_expire_time_from_expires_in,check_token_isvalid,get_access_token
+from dachae.utils import age_range_calulator,get_expire_time_from_expires_in,check_token_isvalid,get_access_token,get_social_user_info
 
 
 #TODO: service 구조로 refactoring
@@ -149,14 +149,7 @@ def set_naver_signup(request):
     
     #3. 사용자 정보 요청
     try:
-        url = "https://openapi.naver.com/v1/nid/me"
-        header = "Bearer " + access_token # Bearer 다음에 공백 추가
-        request = urllib.request.Request(url)
-        request.add_header("Authorization", header)
-        response = urllib.request.urlopen(request)
-        rescode = response.getcode()
-        if(rescode==200):
-            user_info_response = json.loads(response.read().decode('utf-8'))["response"]
+        user_info_response = get_social_user_info(access_token,"naver")
         social_id = user_info_response["id"] if "id" in user_info_response else None
         if not social_id:
             raise exceptions.InvalidAccessTokenException
@@ -298,14 +291,7 @@ def set_naver_login(request):
     
     #3. 사용자 정보 요청
     try:
-        url = "https://openapi.naver.com/v1/nid/me"
-        header = "Bearer " + access_token # Bearer 다음에 공백 추가
-        request = urllib.request.Request(url)
-        request.add_header("Authorization", header)
-        response = urllib.request.urlopen(request)
-        rescode = response.getcode()
-        if(rescode==200):
-            user_info_response = json.loads(response.read().decode('utf-8'))["response"]
+        user_info_response = get_social_user_info(access_token,"naver")
         social_id = user_info_response["id"] if "id" in user_info_response else None
         if not social_id:
             raise exceptions.InvalidAccessTokenException
@@ -409,12 +395,12 @@ def refresh_token(request):
             }
             token_kakao_response = requests.post(url,headers=headers,data=body)
             kakao_response_result = json.loads(token_kakao_response.text)
-            print(kakao_response_result)
             new_access_token = kakao_response_result["access_token"]
             new_expires_in = kakao_response_result["expires_in"]
             new_refresh_token = None if "refresh_token" not in kakao_response_result else kakao_response_result["refresh_token"]
 
         elif social_platform == "naver":
+            #TODO: 코드추가
             print("naver")
     except:
         raise exceptions.ServerConnectionFailedException
