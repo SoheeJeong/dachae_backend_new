@@ -1,6 +1,6 @@
 from django.views import View
 from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -380,31 +380,34 @@ def set_naver_login(request):
 @api_view(["GET"])
 def set_logout(request):
     '''
-    카카오 로그아웃
+    로그아웃
     '''
     header = request.headers
     access_token = header['Authorization'] if 'Authorization' in header else None
+    user_id = request.GET.get('user_id',None)
     social_platform = request.GET.get('social_platform',None)
 
     #valid user 인지 검사
     #validation = check_token_isvalid(access_token,user_id)
     #if validation == "not logged":
     #    raise exceptions.LoginRequiredException
+
     if social_platform == "kakao":
         url = "https://kapi.kakao.com/v1/user/logout"
         headers = {
                 'Authorization':f'Bearer {access_token}',
                 'Content-type':'application/x-www-form-urlencoded;charset=utf-8',
             }
-
         token_kakao_response = requests.post(url,headers=headers)
         kakao_response_result = json.loads(token_kakao_response.text)
         social_id = kakao_response_result["id"]
-        #TODO: delete token
+        #delete token
+        TbUserAuth.objects.filter(user_id=user_id).delete()
+
     elif social_platform == "naver":
-        print('naver logout')
-        #TODO:logout
-        #TODO: delete token
+        #delete token
+        TbUserAuth.objects.filter(user_id=user_id).delete()
+        #return redirect("https://nid.naver.com/nidlogin.logout")
 
     data = {
         "social_platform":social_platform,
@@ -413,27 +416,6 @@ def set_logout(request):
         }
     return Response(data)
 
-@api_view(["GET"])
-def set_naver_logout(request):
-    '''
-    네이버 로그아웃
-    '''
-    header = request.headers
-    access_token = header['Authorization'] if 'Authorization' in header else None
-    user_id = request.GET.get("user_id",None)
-
-    #valid user 인지 검사
-    validation = check_token_isvalid(access_token,user_id)
-    if validation == "not logged":
-        raise exceptions.LoginRequiredException
-    
-    # kakao logout
-    # "https://kauth.kakao.com/oauth/logout?client_id={{logout_data.REST_API_KEY}}&logout_redirect_uri={{logout_data.LOGOUT_REDIRECT_URI}}"
-    
-    #TODO: delete token
-
-    data = {"result":"succ"}
-    return Response(data)
 
 @api_view(["GET"])
 def refresh_token(request):
