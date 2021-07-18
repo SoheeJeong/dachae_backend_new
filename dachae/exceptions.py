@@ -13,6 +13,9 @@ class LoginRequiredException(APIException):
     status_code = 401
     default_detail = "로그인이 필요한 기능입니다. 로그인 해주세요."
 
+class LoggedException(APIException):
+    status_code = 401
+    default_detail = "이미 로그인된 사용자입니다. 다른 기기에서 먼저 로그아웃 해주세요."
 
 class DormantMemberException(APIException):
     status_code = 401
