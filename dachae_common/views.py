@@ -425,8 +425,54 @@ def refresh_token(request):
     header = request.headers
     refresh_token = header['Authorization'] if 'Authorization' in header else None
     user_id = request.GET.get("user_id",None)
+    social_platform = request.GET.get("social_platform",None)
 
-    #TODO: token 변경
+    if not user_id or not social_platform:
+        raise exceptions.ParameterMissingException
+    
+    if TbUserAuth.objects.filter(user_id=user_id).exists():
+        userauth = TbUserAuth.objects.get(user_id=user_id)
+        if not userauth.refresh_token: #다시 로그인 필요
+            raise exceptions.ExpiredRefreshTokenException
+        elif not refresh_token: 
+            raise exceptions.ParameterMissingException
+    
+    try:
+        if social_platform == "kakao":
+            url = "https://kauth.kakao.com/oauth/token"
+            headers = {'Content-type':'application/x-www-form-urlencoded;charset=utf-8'}
+            body = {
+                "grant_type": "refresh_token",
+                "client_id": os.getenv("KAKAO_APP_KEY"),
+                "refresh_token" : refresh_token
+            }
+            token_kakao_response = requests.post(url,headers=headers,data=body)
+            kakao_response_result = json.loads(token_kakao_response.text)
+            print(kakao_response_result)
+            new_access_token = kakao_response_result["access_token"]
+            new_expires_in = kakao_response_result["expires_in"]
+            new_refresh_token = None if "refresh_token" not in kakao_response_result else kakao_response_result["refresh_token"]
+
+        elif social_platform == "naver":
+            print("naver")
+    except:
+        raise exceptions.ServerConnectionFailedException
+
+    expire_time = get_expire_time_from_expires_in(new_expires_in)
+    server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    #access token 정보 변경
+    try:
+        userauth = TbUserAuth.objects.get(user_id=user_id)
+        if not userauth:
+            print("user not exist")
+        userauth.access_token = new_access_token
+        if new_refresh_token:
+            userauth.refresh_token = new_refresh_token
+        userauth.expire_time = expire_time
+        userauth.modified_time = server_time
+        userauth.save()
+    except:
+        raise exceptions.DatabaseException
 
     data = {"result":"succ"}
     return Response(data)

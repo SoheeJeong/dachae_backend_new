@@ -40,6 +40,10 @@ class ExpiredAccessTokenException(APIException):
     status_code = 401
     default_detail = "Access Token이 만료되었습니다."
 
+class ExpiredRefreshTokenException(APIException):
+    status_code = 401
+    default_detail = "Refresh Token이 만료되었습니다. 다시 로그인 해주세요."
+
 class ParameterMissingException(APIException):
     status_code = 401
     default_detail = "필요한 parameter 가 전달되지 않았습니다."
