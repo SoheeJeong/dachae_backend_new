@@ -9,6 +9,10 @@ class LoginRequiredException(APIException):
     status_code = 401
     default_detail = "로그인이 필요한 기능입니다. 로그인 해주세요."
 
+class ExistMemberException(APIException):
+    status_code = 401
+    default_detail = "이미 가입된 회원입니다. 로그인 해주세요."
+
 class LoggedException(APIException):
     status_code = 401
     default_detail = "이미 로그인된 사용자입니다. 다른 기기에서 먼저 로그아웃 해주세요."
@@ -16,7 +20,6 @@ class LoggedException(APIException):
 class DormantMemberException(APIException):
     status_code = 401
     default_detail = "해당 계정은 3개월 이상 미접속하여 휴면상태가 되었습니다. 관리자에게 문의하세요."
-
 
 class LeftMemberException(APIException):
     status_code = 401
@@ -29,7 +32,6 @@ class InvalidUserIdException(APIException):
 class InvalidAccessTokenException(APIException):
     status_code = 500
     default_detail = "Access Token이 유효하지 않습니다."
-
 
 class ExpiredAccessTokenException(APIException):
     status_code = 401
@@ -55,16 +57,13 @@ class StorageConnectionException(APIException):
     status_code = 500
     default_detail = "스토리지로부터 파일을 가져오는 데 실패했습니다."
 
-
 class NotAdminException(APIException):
     status_code = 500
     default_detail = "관리자가 아닙니다."
 
-
 class NotMemberException(APIException):
     status_code = 500
     default_detail = "맴버가 아닙니다."
-
 
 class DataBaseException(APIException):
     status_code = 500
