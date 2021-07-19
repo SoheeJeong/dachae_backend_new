@@ -43,16 +43,15 @@ def login_page(request):
     return render(request,'login.html',{'login_data':kakao_login_data,'logout_data':kakao_logout_data,"naver_login_data":naver_login_data})
 
 @api_view(["GET"])
-def set_kakao_signup(request):
+def set_kakao_login_signup(request):
     '''
-    새로운 회원 회원가입 실행
-    소셜로그인에서 넘어온 회원가입 페이지
+    카카오 로그인, 회원가입
     '''
     #1.인증코드 요청
     access_code = request.GET.get('code',None)
     if not access_code: raise exceptions.InvalidAccessTokenException
     social_platform = "kakao"
-    #2.access token 요청
+    #2.access token 요청 - frontend 에서 post로 받기?
     try:
         kakao_response_result = get_access_token(access_code,"kakao")
         access_token = kakao_response_result["access_token"]
@@ -60,6 +59,8 @@ def set_kakao_signup(request):
         expires_in = kakao_response_result["expires_in"]
     except:
         raise exceptions.ServerConnectionFailedException
+    #TODO: POST로 access token 받기
+    #실제 backend 함수 시작부분!
     if not access_token: raise exceptions.InvalidAccessTokenException
     if not expires_in or not social_platform: raise exceptions.ParameterMissingException
     
@@ -71,37 +72,56 @@ def set_kakao_signup(request):
     except:
         raise exceptions.ServerConnectionFailedException
 
-    # 이미 존재하는 회원
+    # 이미 존재하는 회원 - 로그인 실행
     if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
-        raise exceptions.ExistMemberException
-
-    try:
-        #insert into user DB
-        user = TbUserInfo(
-            social_platform = social_platform,
-            social_id = social_id,
-            # user_nm = user_nm,
-            # email = email,
-            rgst_date = datetime.now(),
-            # state = "active",
-            # level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
-            # role = "member"
-        )
-        user.save()
-        user_id = user.user_id
-        #access token 정보 저장
+        user = TbUserInfo.objects.get(social_id=social_id)
+        #이미 로그인된 사용자
+        if TbUserAuth.objects.filter(user_id=user.user_id).exists(): 
+            raise exceptions.LoggedException
+        #권한정보 저장
+        expire_time = get_expire_time_from_expires_in(expires_in)
+        server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            TbUserAuth(
+                user_id = user.user_id,
+                access_token = access_token,
+                refresh_token = refresh_token,
+                expire_time = expire_time,
+                created_time = server_time
+            ).save()
+        except:
+            raise exceptions.DataBaseException
+    # 새로운 회원 - 회원가입 실행
+    else: 
+        try: #insert into user DB
+            user = TbUserInfo(
+                social_platform = social_platform,
+                social_id = social_id,
+                # user_nm = user_nm,
+                # email = email,
+                rgst_date = datetime.now(),
+                # state = "active",
+                # level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
+                # role = "member"
+            )
+            user.save()
+            user_id = user.user_id
+        except:
+            raise exceptions.DataBaseException
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         expire_time = get_expire_time_from_expires_in(expires_in)
-        userauth = TbUserAuth(
-            user_id = user_id,
-            access_token = access_token,
-            refresh_token = refresh_token,
-            expire_time = expire_time,
-            created_time = server_time
-        )
-        userauth.save()
-    except:
-       raise exceptions.DataBaseException
+        try: #access token 정보 저장    
+            userauth = TbUserAuth(
+                user_id = user_id,
+                access_token = access_token,
+                refresh_token = refresh_token,
+                expire_time = expire_time,
+                created_time = server_time
+            ) 
+            userauth.save()
+        except:
+            TbUserInfo.objects.filter(user_id=user.user_id).delete()
+            raise exceptions.DataBaseException
 
     #권한정보, 사용자정보 넘겨주기
     user_data = {
@@ -114,16 +134,16 @@ def set_kakao_signup(request):
     }
     return Response(user_data)
 
+
 @api_view(["GET"])
-def set_naver_signup(request):
+def set_naver_login_signup(request):
     '''
-    네이버 회원가입 실행
+    네이버 로그인, 회원가입
     '''
     #1.인증코드 요청
     access_code = request.GET.get('code',None)
     if not access_code:  raise exceptions.InvalidAccessTokenException
     social_platform = "naver"
-
     #2. access token 요청
     try:
         naver_response_result = get_access_token(access_code,"naver")
@@ -132,88 +152,19 @@ def set_naver_signup(request):
         expires_in = naver_response_result["expires_in"]
     except:
         raise exceptions.ServerConnectionFailedException
+
+    #TODO: POST로 access token 받기
+    #실제 backend 함수 시작부분!
     if not access_token: raise exceptions.InvalidAccessTokenException
     if not expires_in or not social_platform: raise exceptions.ParameterMissingException
-    
     #3. 사용자 정보 요청
     try:
         user_info_response = get_social_user_info(access_token,"naver")
         social_id = user_info_response["id"] if "id" in user_info_response else None
         if not social_id: raise exceptions.InvalidAccessTokenException
-    except:
-        raise exceptions.ServerConnectionFailedException
+    except:  raise exceptions.ServerConnectionFailedException
 
-    if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
-        raise exceptions.ExistMemberException
-
-    try:
-        #insert into user DB
-        user = TbUserInfo(
-            social_platform = "naver",
-            social_id = social_id,
-            #user_nm = user_nm,
-            #email = email,
-            rgst_date = datetime.now(),
-            #state = state,
-            #level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
-            #role = "member"
-        )
-        user.save()
-        user_id = user.user_id
-        #access token 정보 저장
-        server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # age_range = age_range_calulator(birthday_date) 
-        expire_time = get_expire_time_from_expires_in(expires_in)
-        userauth = TbUserAuth(
-            user_id = user_id,
-            access_token = access_token,
-            refresh_token = refresh_token,
-            expire_time = expire_time,
-            created_time = server_time
-        )
-        userauth.save()       
-    except:
-       raise exceptions.DataBaseException
-
-    #권한정보, 사용자정보 넘겨주기
-    user_data = {
-        'access_token':access_token,
-        'refresh_token':refresh_token,
-        'expires_in':expires_in,
-        'user_id': user_id,
-        'social_platform':user.social_platform,
-        'social_id': user.social_id,
-    }
-    return Response(user_data)
-
-@api_view(["GET"])
-def set_kakao_login(request): 
-    """
-    카카오 로그인
-    """
-    #1.인증코드 요청
-    access_code = request.GET.get('code',None)
-    if not access_code: raise exceptions.InvalidAccessTokenException
-    social_platform = "kakao"
-    #2.access token 요청
-    try:
-        kakao_response_result = get_access_token(access_code,"kakao")
-        access_token = kakao_response_result["access_token"]
-        refresh_token = kakao_response_result["refresh_token"]
-        expires_in = kakao_response_result["expires_in"]
-    except:
-        raise exceptions.ServerConnectionFailedException
-    if not access_token:  raise exceptions.InvalidAccessTokenException
-    if not expires_in or not social_platform: raise exceptions.ParameterMissingException
-    #3.사용자 정보 요청
-    try:
-        user_info_response = get_social_user_info(access_token,"kakao")
-        social_id = user_info_response["id"] if "id" in user_info_response else None
-        if not social_id:  raise exceptions.InvalidAccessTokenException
-    except:
-        raise exceptions.InvalidAccessTokenException
-    
-    #이미 존재하는 회원이면 - 로그인 실행
+    # 이미 존재하는 회원 - 로그인 실행
     if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
         user = TbUserInfo.objects.get(social_id=social_id)
         #이미 로그인된 사용자
@@ -222,81 +173,58 @@ def set_kakao_login(request):
         #권한정보 저장
         expire_time = get_expire_time_from_expires_in(expires_in)
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        TbUserAuth(
-            user_id = user.user_id,
-            access_token = access_token,
-            refresh_token = refresh_token,
-            expire_time = expire_time,
-            created_time = server_time
-        ).save()
-        #사용자정보 넘겨주기
-        user_data = {
-            'access_token':access_token,
-            'refresh_token':refresh_token,
-            'expires_in':expires_in,
-            'user_id': user.user_id,
-            'social_platform':user.social_platform,
-            'social_id': user.social_id,
-        }
-        return JsonResponse(user_data)
-    else: #새로운 회원
-        raise exceptions.NewMemberException
-
-@api_view(["GET"])
-def set_naver_login(request):
-    '''
-    네이버 로그인
-    '''
-    access_code = request.GET.get('code',None)
-    if not access_code:  raise exceptions.InvalidAccessTokenException
-    social_platform = "naver"
-
-    #2. access token 요청
-    try:
-        naver_response_result = get_access_token(access_code,"naver")
-        access_token = naver_response_result["access_token"]
-        refresh_token = naver_response_result["refresh_token"]
-        expires_in = naver_response_result["expires_in"]
-    except:
-        raise exceptions.ServerConnectionFailedException
-    if not access_token: raise exceptions.InvalidAccessTokenException
-    if not expires_in or not social_platform: raise exceptions.ParameterMissingException
-    
-    #3. 사용자 정보 요청
-    try:
-        user_info_response = get_social_user_info(access_token,"naver")
-        social_id = user_info_response["id"] if "id" in user_info_response else None
-        if not social_id: raise exceptions.InvalidAccessTokenException
-    except:
-        raise exceptions.ServerConnectionFailedException
-
-    #이미 존재하는 회원이면 - 로그인 실행
-    if TbUserInfo.objects.filter(social_platform=social_platform,social_id=social_id).exists():
-        user = TbUserInfo.objects.get(social_platform=social_platform,social_id=social_id)
-        #access token 정보 저장
-        if TbUserAuth.objects.filter(user_id=user.user_id).exists():
-            raise exceptions.LoggedException
-        expire_time = get_expire_time_from_expires_in(expires_in)
+        try:
+            TbUserAuth(
+                user_id = user.user_id,
+                access_token = access_token,
+                refresh_token = refresh_token,
+                expire_time = expire_time,
+                created_time = server_time
+            ).save()
+        except:  raise exceptions.DataBaseException
+    # 새로운 회원 - 회원가입 실행
+    else: 
+        try: #insert into user DB
+            user = TbUserInfo(
+                social_platform = social_platform,
+                social_id = social_id,
+                # user_nm = user_nm,
+                # email = email,
+                rgst_date = datetime.now(),
+                # state = "active",
+                # level = "free", #default free #TODO: 유료회원 받는 란 -> 추후 추가
+                # role = "member"
+            )
+            user.save()
+            user_id = user.user_id
+        except:
+            raise exceptions.DataBaseException
         server_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        TbUserAuth(
-            user_id = user.user_id,
-            access_token = access_token,
-            refresh_token = refresh_token,
-            expire_time = expire_time,
-            created_time = server_time
-        ).save()
-        #권한정보, 사용자정보 넘겨주기
-        user_data = {
-            'access_token':access_token,
-            'refresh_token':refresh_token,
-            'expires_in':expires_in,
-            'user_id': user.user_id,
-            'social_platform':user.social_platform,
-            'social_id': user.social_id,
-        }
-        return JsonResponse(user_data)
-    else: #새로운 회원
-        raise exceptions.NewMemberException
+        expire_time = get_expire_time_from_expires_in(expires_in)
+        try: #access token 정보 저장    
+            userauth = TbUserAuth(
+                user_id = user_id,
+                access_token = access_token,
+                refresh_token = refresh_token,
+                expire_time = expire_time,
+                created_time = server_time
+            )
+            userauth.save()
+        except:
+            TbUserInfo.objects.filter(user_id=user.user_id).delete()
+            raise exceptions.DataBaseException
+
+    #권한정보, 사용자정보 넘겨주기
+    user_data = {
+        'access_token':access_token,
+        'refresh_token':refresh_token,
+        'expires_in':expires_in,
+        'user_id': user.user_id,
+        'social_platform':user.social_platform,
+        'social_id': user.social_id,
+    }
+    return Response(user_data)
+
 
 @api_view(["GET"])
 def set_logout(request):
@@ -409,6 +337,7 @@ def set_withdrawal(request):
     if validation == "not logged": raise exceptions.LoginRequiredException
     
     #TODO: 회원 DB에서 삭제
+    #TODO: 인증 DB에서 삭제
 
     data = {"result":"succ"}
     return Response(data)
