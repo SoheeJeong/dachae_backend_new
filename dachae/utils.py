@@ -9,8 +9,11 @@ import datetime
 import requests
 import urllib
 
-from .models import TbUserAuth,TbUserInfo,TbArtworkInfo
+from .models import TbUserAuth,TbUserInfo,TbArtworkInfo,TbLabelInfo,TbProductInfo,TbCompanyInfo
 import dachae.exceptions as exceptions
+
+ARTWORK_LABEL_NUM = 3 #명화 1개당 라벨 개수
+ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
 
 #TODO: expiration time 줄이기?
 
@@ -69,16 +72,59 @@ def get_public_url(bucket,key):
     public_url = "http://"+bucket+".s3.ap-northeast-2.amazonaws.com/"+key
     return public_url
 
+
+def get_picture_detail_info(img_id):
+    '''
+    명화 1개의 상세정보 가져오기 (이미지 클릭 시 명화 상세정보 페이지로 이동)
+    '''
+    image_data = TbArtworkInfo.objects.filter(img_id=img_id).values("img_path","title","author","era","style","product_id","label1_id","label2_id","label3_id") #,"label4_id","label5_id")
+    if image_data.exists():
+        image_data = image_data[0]
+        company_info = TbProductInfo.objects.filter(product_id=image_data["product_id"]).values("company_id","price")
+        if company_info.exists():
+            company_nm = TbCompanyInfo.objects.filter(company_id=company_info[0]["company_id"]).values("company_nm")
+        else:
+            raise exceptions.NoProductInfoException
+        
+        image_data.update(company_info[0])
+        image_data.update(company_nm[0])
+        del image_data["product_id"]
+        del image_data["company_id"]
+    else:
+        raise exceptions.NoImageInfoException
+
+    # 명화의 라벨 리스트 생성
+    label_list = []
+    for i in range(1,ARTWORK_LABEL_NUM+1):
+        col_nm = "label"+str(i)+"_id"
+        label_id = image_data[col_nm]
+        del image_data[col_nm]
+
+        if label_id is not None:
+            try:
+                label_nm = TbLabelInfo.objects.filter(label_id=label_id).values("label_nm")[0]
+                label_list.append(label_nm["label_nm"])
+            except:
+                raise exceptions.DataBaseException
+
+    image_data.update({
+        "label_list":label_list
+    })
+
+    #s3 image path
+    img_key = image_data["img_path"]
+    public_url = get_public_url(ARTWORK_BUCKET_NAME,img_key)
+    #response 를 위한 img path 데이터 변경
+    image_data["img_path"]=public_url
+
+    return image_data
+
+
 def convert_recommended_img_path_into_s3_path(recommend_results):
     analog = recommend_results
-    ARTWORK_BUCKET_NAME = os.getenv("ARTWORK_BUCKET_NAME")
-
     for i in range(len(analog)):
-        img_key = analog[i]["img_path"]
-        del analog[i]["img_path"]
-        analog[i].update({
-            "img_path": get_public_url(ARTWORK_BUCKET_NAME,img_key)
-        })
+        img_id = analog[i]["img_id"]
+        analog[i] = get_picture_detail_info(img_id)
     return analog
 
 def age_range_calulator(birthday_date):
