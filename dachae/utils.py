@@ -80,7 +80,7 @@ def get_picture_detail_info(img_id):
     image_data = TbArtworkInfo.objects.filter(img_id=img_id).values("img_path","title","author","era","style","product_id","label1_id","label2_id","label3_id") #,"label4_id","label5_id")
     if image_data.exists():
         image_data = image_data[0]
-        company_info = TbProductInfo.objects.filter(product_id=image_data["product_id"]).values("company_id","price")
+        company_info = TbProductInfo.objects.filter(product_id=image_data["product_id"]).values("company_id","price","purchase_url")
         if company_info.exists():
             company_nm = TbCompanyInfo.objects.filter(company_id=company_info[0]["company_id"]).values("company_nm")
         else:
