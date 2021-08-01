@@ -42,25 +42,18 @@ def login_page(request):
     }
     return render(request,'login.html',{'login_data':kakao_login_data,'logout_data':kakao_logout_data,"naver_login_data":naver_login_data})
 
-@api_view(["GET"])
+@csrf_exempt
+@api_view(["POST"])
 def set_kakao_login_signup(request):
     '''
     카카오 로그인, 회원가입
     '''
-    #1.인증코드 요청
-    access_code = request.GET.get('code',None)
-    if not access_code: raise exceptions.InvalidAccessTokenException
+    #get param
+    body = json.loads(request.body.decode("utf-8"))
+    access_token = None if "access_token" not in body else body["access_token"]
+    refresh_token = None if "refresh_token" not in body else body["refresh_token"]
+    expires_in = None if "expires_in" not in body else body["expires_in"]
     social_platform = "kakao"
-    #2.access token 요청 - frontend 에서 post로 받기?
-    try:
-        kakao_response_result = get_access_token(access_code,"kakao")
-        access_token = kakao_response_result["access_token"]
-        refresh_token = kakao_response_result["refresh_token"]
-        expires_in = kakao_response_result["expires_in"]
-    except:
-        raise exceptions.ServerConnectionFailedException
-    #TODO: POST로 access token 받기
-    #실제 backend 함수 시작부분!
     if not access_token: raise exceptions.InvalidAccessTokenException
     if not expires_in or not social_platform: raise exceptions.ParameterMissingException
     
@@ -134,29 +127,21 @@ def set_kakao_login_signup(request):
     }
     return Response(user_data)
 
-
-@api_view(["GET"])
+@csrf_exempt
+@api_view(["POST"])
 def set_naver_login_signup(request):
     '''
     네이버 로그인, 회원가입
     '''
-    #1.인증코드 요청
-    access_code = request.GET.get('code',None)
-    if not access_code:  raise exceptions.InvalidAccessTokenException
+    # get param
+    body = json.loads(request.body.decode("utf-8"))
+    access_token = None if "access_token" not in body else body["access_token"]
+    refresh_token = None if "refresh_token" not in body else body["refresh_token"]
+    expires_in = None if "expires_in" not in body else body["expires_in"]
     social_platform = "naver"
-    #2. access token 요청
-    try:
-        naver_response_result = get_access_token(access_code,"naver")
-        access_token = naver_response_result["access_token"]
-        refresh_token = naver_response_result["refresh_token"]
-        expires_in = naver_response_result["expires_in"]
-    except:
-        raise exceptions.ServerConnectionFailedException
-
-    #TODO: POST로 access token 받기
-    #실제 backend 함수 시작부분!
     if not access_token: raise exceptions.InvalidAccessTokenException
     if not expires_in or not social_platform: raise exceptions.ParameterMissingException
+    
     #3. 사용자 정보 요청
     try:
         user_info_response = get_social_user_info(access_token,"naver")
