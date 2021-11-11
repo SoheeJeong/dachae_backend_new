@@ -25,9 +25,9 @@ class TbActionInfo(models.Model):
 class TbArtworkInfo(models.Model):
     img_id = models.AutoField(primary_key=True)
     img_path = models.CharField(max_length=200)
-    title = models.CharField(max_length=50, blank=True, null=True)
-    author = models.CharField(max_length=50, blank=True, null=True)
-    era = models.CharField(max_length=50, blank=True, null=True)
+    title = models.CharField(max_length=200, blank=True, null=True)
+    author = models.CharField(max_length=100, blank=True, null=True)
+    era = models.CharField(max_length=100, blank=True, null=True)
     style = models.CharField(max_length=50, blank=True, null=True)
     h1 = models.PositiveIntegerField(blank=True, null=True)
     s1 = models.PositiveIntegerField(blank=True, null=True)
