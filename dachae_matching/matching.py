@@ -151,8 +151,8 @@ class Recommendation():
         """
         #default 이미지 추천 - random select
         if self.default:
-            # df_shuffled = self.df.sample(frac=1).reset_index(drop=True) # radom shuffle
-            df_shuffled = self.df #초반 30개 선택 #TODO: 바꾸기
+            df_shuffled = self.df.sample(frac=1).reset_index(drop=True) # radom shuffle
+            #df_shuffled = self.df #초반 30개 선택 #TODO: 바꾸기
             df_analog = df_shuffled[1:30][['img_id','img_path']].to_dict('records') # 30개 선택
             return df_analog
 
