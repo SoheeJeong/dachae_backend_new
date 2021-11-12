@@ -57,7 +57,7 @@ def set_upload_and_recommend(request):
         raise exceptions.TooManyFileUploadedException  
     #파일 확장자 검사
     filename = upload_files[0].name.split('.')
-    if filename[len(filename)-1] not in ['jpg','jpeg','png']: #TODO : 허용되는 확장자 지정
+    if filename[len(filename)-1] not in ['jpg','jpeg','png','jfif']: #TODO : 허용되는 확장자 지정
         raise exceptions.WrongFileFormatException
 
     #파일 저장 
